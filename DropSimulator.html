@@ -1700,21 +1700,23 @@ function doBoss() {
   const current = state.gear[slot.id];
   const isNew = !current;
 
-  // Hướng C: Boss cuối chapter → guaranteed upgrade
+  // Hướng C: Boss cuối chapter → guaranteed upgrade (capped theo max rarity của chapter)
   if (isFinal && !isNew) {
     const curScore = current.score;
-    // Thử bump rarity lên cho đến khi score > curScore
+    const chProbs = state.customProb ? state.customProb[probGroup(ch)] : DEFAULT_PROB[probGroup(ch)];
+    const maxRarityIdx = chProbs.reduce((max, p, i) => p > 0 ? i : max, 0);
+    // Thử bump rarity lên nhưng không vượt quá max rarity của chapter
     if (score <= curScore) {
-      for (let ri = RARITIES.indexOf(rarity) + 1; ri < RARITIES.length; ri++) {
+      for (let ri = RARITIES.indexOf(rarity) + 1; ri <= maxRarityIdx; ri++) {
         const tryScore = calcScore(item, RARITIES[ri]);
         if (tryScore > curScore) { rarity = RARITIES[ri]; score = tryScore; break; }
       }
     }
-    // Nếu vẫn không đủ → thử item mạnh nhất trong chapter pool
+    // Nếu vẫn không đủ → thử item mạnh nhất trong chapter pool (vẫn giới hạn max rarity)
     if (score <= curScore) {
       const pool = CH_ITEMS[slot.id][ch] || [];
       for (const candidate of pool) {
-        for (let ri = RARITIES.length - 1; ri >= 0; ri--) {
+        for (let ri = maxRarityIdx; ri >= 0; ri--) {
           const tryScore = calcScore(candidate, RARITIES[ri]);
           if (tryScore > curScore) { item = candidate; rarity = RARITIES[ri]; score = tryScore; break; }
         }
