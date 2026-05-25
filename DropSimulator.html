@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Night Valley — Equipment Drop Simulator</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0f0; font-size: 13px; }
+
+/* Layout */
+.app { display: grid; grid-template-columns: 300px 1fr 260px; gap: 0; height: 100vh; overflow: hidden; }
+.panel { padding: 14px; overflow-y: auto; }
+.panel-left  { background: #16162a; border-right: 1px solid #2a2a44; }
+.panel-mid   { background: #0f0f1a; }
+.panel-right { background: #16162a; border-left: 1px solid #2a2a44; }
+
+/* Header */
+.app-title { font-size: 15px; font-weight: 800; color: #a78bfa; margin-bottom: 14px; letter-spacing: 0.05em; }
+.section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #6b7280; margin-bottom: 8px; margin-top: 14px; }
+
+/* Chapter control */
+.ch-control { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ch-label { font-size: 13px; font-weight: 700; color: #e0e0f0; }
+.ch-val { font-size: 20px; font-weight: 800; color: #a78bfa; min-width: 30px; text-align: center; }
+.btn { padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer; font-size: 12px; font-weight: 700; transition: all 0.15s; }
+.btn-sm { padding: 4px 10px; font-size: 11px; }
+.btn-purple { background: #7c3aed; color: #fff; }
+.btn-purple:hover { background: #6d28d9; }
+.btn-green { background: #059669; color: #fff; }
+.btn-green:hover { background: #047857; }
+.btn-gray { background: #374151; color: #d1d5db; }
+.btn-gray:hover { background: #4b5563; }
+.btn-red { background: #dc2626; color: #fff; }
+.btn-red:hover { background: #b91c1c; }
+.btn-orange { background: #d97706; color: #fff; }
+.btn-orange:hover { background: #b45309; }
+input[type=range] { width: 100%; accent-color: #7c3aed; }
+
+/* Chapter info */
+.ch-info { background: #1e1e36; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+.ch-stat { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 11px; }
+.ch-stat span:last-child { color: #a78bfa; font-weight: 700; }
+
+/* Rarity colors */
+.r-common    { color: #d1d5db; }
+.r-uncommon  { color: #34d399; }
+.r-rare      { color: #60a5fa; }
+.r-epic      { color: #c084fc; }
+.r-legendary { color: #fb923c; }
+.bg-common    { background: #374151; }
+.bg-uncommon  { background: #064e3b; border: 1px solid #34d399; }
+.bg-rare      { background: #1e3a5f; border: 1px solid #60a5fa; }
+.bg-epic      { background: #3b1d6b; border: 1px solid #c084fc; }
+.bg-legendary { background: #7c2d12; border: 1px solid #fb923c; }
+
+/* Gear slots */
+.gear-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.gear-slot { border-radius: 7px; padding: 7px 9px; min-height: 62px; position: relative; }
+.gear-slot-name { font-size: 10px; color: #9ca3af; margin-bottom: 2px; }
+.gear-item-name { font-size: 12px; font-weight: 700; margin-bottom: 1px; }
+.gear-score { font-size: 10px; color: #9ca3af; }
+.gear-empty { color: #4b5563; font-size: 11px; font-style: italic; }
+.gear-rarity-badge { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; display: inline-block; margin-bottom: 3px; }
+
+/* Boss button */
+.boss-btn { width: 100%; padding: 14px; border-radius: 10px; border: none; cursor: pointer; font-size: 16px; font-weight: 800; background: linear-gradient(135deg, #7c3aed, #db2777); color: #fff; margin-bottom: 10px; transition: all 0.2s; letter-spacing: 0.05em; }
+.boss-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(124,58,237,0.4); }
+.boss-btn:active { transform: translateY(0); }
+.boss-btn.disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+/* Drop history */
+.drop-list { display: flex; flex-direction: column; gap: 5px; }
+.drop-card { border-radius: 7px; padding: 8px 10px; display: flex; align-items: center; gap: 8px; }
+.drop-card-info { flex: 1; }
+.drop-card-name { font-size: 12px; font-weight: 700; }
+.drop-card-sub { font-size: 10px; color: #9ca3af; }
+.drop-card-score { font-size: 12px; font-weight: 700; text-align: right; min-width: 50px; }
+.drop-badge { font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
+.badge-upgrade { background: #065f46; color: #34d399; }
+.badge-sell { background: #374151; color: #9ca3af; }
+.badge-new { background: #1e3a5f; color: #60a5fa; }
+
+/* Stats */
+.stat-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #2a2a44; font-size: 11px; }
+.stat-row:last-child { border-bottom: none; }
+.stat-val { font-weight: 700; color: #a78bfa; }
+.rarity-bar { display: flex; height: 14px; border-radius: 4px; overflow: hidden; margin-top: 4px; }
+.rarity-seg { display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: #fff; transition: width 0.3s; }
+
+/* Prob editor */
+.prob-editor { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+.prob-field { display: flex; flex-direction: column; gap: 2px; }
+.prob-field label { font-size: 10px; }
+.prob-field input[type=number] { background: #1e1e36; border: 1px solid #374151; color: #e0e0f0; border-radius: 5px; padding: 4px 7px; font-size: 12px; width: 100%; }
+
+/* Chapter wave visual */
+.wave-visual { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 6px; }
+.wave-dot { width: 16px; height: 16px; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff; font-weight: 700; }
+.wave-normal { background: #374151; }
+.wave-boss { background: #7c3aed; }
+.wave-boss-final { background: #f59e0b; }
+.wave-done { opacity: 0.35; }
+.wave-current { ring: 2px; box-shadow: 0 0 0 2px #a78bfa; }
+
+/* Pity display */
+.pity-bar { height: 6px; background: #2a2a44; border-radius: 3px; margin-top: 4px; overflow: hidden; }
+.pity-fill { height: 100%; background: #f59e0b; border-radius: 3px; transition: width 0.3s; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
+
+/* Log item fade */
+@keyframes slideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+.new-drop { animation: slideIn 0.25s ease; }
+
+/* Tabs */
+.tab-row { display: flex; gap: 4px; margin-bottom: 10px; }
+.tab { padding: 4px 10px; border-radius: 5px; border: 1px solid #374151; cursor: pointer; font-size: 11px; font-weight: 600; color: #9ca3af; }
+.tab.active { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+
+.sim-count { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.sim-count input { background: #1e1e36; border: 1px solid #374151; color: #e0e0f0; border-radius: 5px; padding: 4px 8px; width: 70px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- LEFT: Controls + Gear -->
+<div class="panel panel-left">
+  <div class="app-title">⚔️ NATV Drop Simulator</div>
+
+  <div class="section-label">Chapter</div>
+  <div class="ch-control">
+    <button class="btn btn-gray btn-sm" onclick="chChange(-1)">◀</button>
+    <span class="ch-val" id="chVal">1</span>
+    <button class="btn btn-gray btn-sm" onclick="chChange(1)">▶</button>
+    <input type="range" id="chSlider" min="1" max="24" value="1" oninput="chSet(this.value)">
+  </div>
+
+  <div class="ch-info" id="chInfo"></div>
+
+  <!-- Wave progress -->
+  <div class="section-label">Wave Progress</div>
+  <div class="wave-visual" id="waveVis"></div>
+
+  <!-- Pity -->
+  <div class="section-label">Pity <span id="pityTxt" style="color:#f59e0b;font-weight:700"></span></div>
+  <div class="pity-bar"><div class="pity-fill" id="pityFill" style="width:0%"></div></div>
+
+  <div style="margin-top:14px">
+    <button class="boss-btn" id="bossBtn" onclick="doBoss()">⚔️ ĐÁNH BOSS</button>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-gray btn-sm" style="flex:1" onclick="runAll()">▶▶ Chạy hết chapter</button>
+      <button class="btn btn-red btn-sm" onclick="resetChapter()">↺ Reset Ch</button>
+      <button class="btn btn-red btn-sm" onclick="resetAll()">↺ All</button>
+    </div>
+  </div>
+
+  <!-- Gear -->
+  <div class="section-label">Trang Bị Hiện Tại</div>
+  <div class="gear-grid" id="gearGrid"></div>
+</div>
+
+<!-- MID: Drop log -->
+<div class="panel panel-mid">
+  <div class="tab-row">
+    <div class="tab active" onclick="setTab('log',this)">📜 Drop Log</div>
+    <div class="tab" onclick="setTab('stats',this)">📊 Thống Kê</div>
+    <div class="tab" onclick="setTab('rarity',this)">📋 Rarity List</div>
+    <div class="tab" onclick="setTab('prob',this)">🎲 Xác Suất</div>
+  </div>
+
+  <!-- Log tab -->
+  <div id="tab-log">
+    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
+      <button class="btn btn-gray btn-sm" onclick="clearLog()">Xóa log</button>
+      <span id="logCount" style="color:#6b7280;font-size:11px"></span>
+    </div>
+    <div class="drop-list" id="dropList"></div>
+  </div>
+
+  <!-- Stats tab -->
+  <div id="tab-stats" style="display:none">
+    <div class="sim-count">
+      <span style="font-size:11px;color:#9ca3af">Auto simulate:</span>
+      <input type="number" id="simCount" value="100" min="1" max="9999">
+      <button class="btn btn-green btn-sm" onclick="bulkSim()">▶ Chạy</button>
+    </div>
+    <div id="statsContent"></div>
+  </div>
+
+  <!-- Rarity List tab -->
+  <div id="tab-rarity" style="display:none">
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+      <select id="raritySlotFilter" onchange="renderRarityList()" style="background:#1e1e36;border:1px solid #374151;color:#e0e0f0;border-radius:5px;padding:4px 8px;font-size:11px;flex:1">
+        <option value="all">Tất cả slot</option>
+      </select>
+      <select id="rarityFilter" onchange="renderRarityList()" style="background:#1e1e36;border:1px solid #374151;color:#e0e0f0;border-radius:5px;padding:4px 8px;font-size:11px;flex:1">
+        <option value="all">Tất cả rarity</option>
+        <option value="Common">⬜ Common</option>
+        <option value="Uncommon">🟩 Uncommon</option>
+        <option value="Rare">🟦 Rare</option>
+        <option value="Epic">🟪 Epic</option>
+        <option value="Legendary">🟧 Legendary</option>
+      </select>
+    </div>
+    <div id="rarityListContent"></div>
+  </div>
+
+  <!-- Prob editor tab -->
+  <div id="tab-prob" style="display:none">
+    <div class="section-label">Xác Suất Boss Thường (tổng = 100%) — Boss cuối chapter: guaranteed Uncommon+ (Ch1–8) / Rare+ (Ch9–24)</div>
+    <div id="probEditor"></div>
+    <button class="btn btn-purple btn-sm" style="margin-top:8px;width:100%" onclick="applyProb()">✓ Áp dụng</button>
+    <button class="btn btn-gray btn-sm" style="margin-top:4px;width:100%" onclick="resetProb()">↺ Về mặc định</button>
+    <div id="probErr" style="color:#f87171;font-size:11px;margin-top:4px"></div>
+  </div>
+</div>
+
+<!-- RIGHT: Item DB -->
+<div class="panel panel-right">
+  <div class="section-label">Item Database</div>
+  <div style="margin-bottom:8px">
+    <select id="slotFilter" onchange="renderItemDB()" style="background:#1e1e36;border:1px solid #374151;color:#e0e0f0;border-radius:5px;padding:4px 8px;font-size:11px;width:100%">
+      <option value="all">Tất cả slot</option>
+    </select>
+  </div>
+  <div id="itemDB"></div>
+</div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════════════════
+
+const RARITIES = ['Common','Uncommon','Rare','Epic','Legendary'];
+const RARITY_COLOR = {Common:'#9ca3af',Uncommon:'#34d399',Rare:'#60a5fa',Epic:'#c084fc',Legendary:'#fb923c'};
+const RARITY_BG    = {Common:'bg-common',Uncommon:'bg-uncommon',Rare:'bg-rare',Epic:'bg-epic',Legendary:'bg-legendary'};
+const RARITY_CLASS = {Common:'r-common',Uncommon:'r-uncommon',Rare:'r-rare',Epic:'r-epic',Legendary:'r-legendary'};
+const RARITY_SHORT = {Common:'C',Uncommon:'U',Rare:'R',Epic:'E',Legendary:'L'};
+const SCORE_MULT   = {Common:1.0,Uncommon:1.35,Rare:1.80,Epic:2.40,Legendary:3.20};
+const SELL_FACTOR  = {Common:0.12,Uncommon:0.225,Rare:0.444,Epic:0.84,Legendary:1.88};
+
+// Slot names (VI)
+const SLOTS = [
+  { id:'weapon',   vi:'Súng',        icon:'🔫' },
+  { id:'armor',    vi:'Áo Giáp',     icon:'🛡️' },
+  { id:'glove',    vi:'Găng Tay',    icon:'🧤' },
+  { id:'feet',     vi:'Giày',        icon:'👟' },
+  { id:'hat',      vi:'Mũ',          icon:'🪖' },
+  { id:'ring',     vi:'Nhẫn',        icon:'💍' },
+  { id:'necklace', vi:'Dây Chuyền',  icon:'📿' },
+  { id:'waist',    vi:'Thắt Lưng',   icon:'🎗️' },
+];
+
+// ── Item Pool: weapon=330 items (66×5), các slot khác 65 items (13×5) ────────
+// weapon: 66 gun names × 5 tier (I→V) = 330 items, trải đều 24 chapter
+const MATERIALS = {
+  weapon: [
+    'Nerf Ball Gun','Battery Discharger','Gatling Gun','Dart Gun','Water Gun',
+    'Laser Gun','Flamethrower','Slime Gun','Cork Gun','Pellet Pistol',
+    'Marble Launcher','Slingshot Pistol','Rubber Slug Gun','Pebble Repeater','Spike Pistol',
+    'Splatter Gun','Air Cannon','Spring Launcher','Rivet Gun','Nail Driver',
+    'Splinter Rifle','Spark Pistol','Resin Gun','Bone Pistol','Ghost Revolver',
+    'Tombstone Repeater','Hex Pistol','Phantom Rifle','Coffin Nail Gun','Banshee Cannon',
+    'Grave Iron Cannon','Ecto Blaster','Shadow Bolt Gun','Wraith Carbine','Soulfire Pistol',
+    'Dread Cannon','Cursed Flintlock','Thorn Shooter','Spore Cannon','Venom Rifle',
+    'Vine Launcher','Poison Dart Gun','Briar Blaster','Miasma Sprayer','Stinger Rifle',
+    'Bog Cannon','Coral Carbine','Sap Rifle','Fang Repeater','Junk Cannon',
+    'Boomstick','Sparkfire Pistol','Grease Cannon','Cogwheel Launcher','Junkfire Pistol',
+    'Dynamite Pistol','Scrapshot Blaster','Rattletrap Rifle','Coal Spitter','Shrapnel Launcher',
+    'Pressure Cannon','Smoke Stack Rifle','Furnace Gun','Plasma Pistol','Photon Blaster','Gravity Gun',
+  ],
+  armor: [
+    'Light Armor','Adventurer\'s Shirt','Army Shirt','Leather Jacket','Letterman Jacket',
+    'Bulletproof Vest','Full Metal Suit','Protective Armor','Cotton Tunic','Linen Vest',
+    'Patchwork Shirt','Canvas Jacket','Wool Coat','Denim Vest','Flannel Jacket',
+    'Quilted Vest','Burlap Tunic','Work Overalls','Padded Vest','Raincoat',
+    'Carpenter Apron','Stitched Jerkin','Rubber Coat','Gravecloth Wrap','Phantom Shroud',
+    'Bone Plate Armor','Hex-Warded Vest','Tombstone Chestplate','Spirit Mail','Deathwood Plate',
+    'Wraith Cloak','Banshee-Hide Vest','Crypt Iron Breastplate','Cursed Leather Coat','Nightshade Cloak',
+    'Soulbound Vest','Revenant Plate','Darkfire Mantle','Deathbell Hauberk','Moonlit Mail',
+    'Bark Armor','Vine-Woven Vest','Moss Cloak','Thorn Plate','Fungal Hide',
+    'Swamp Leather Vest','Reed-Weave Tunic','Ironwood Breastplate','Serpent Scale Vest','Coral Chestplate',
+    'Amber-Coated Jacket','Petrified Bark Plate','Turtle Shell Guard','Bramble Mail','Mangrove Root Plate',
+    'Spore-Guard Vest','Leech-Hide Jacket','Scrap Metal Vest','Tin Can Armor','Boiler Plate',
+    'Gear-Plated Jacket','Smokesteel Vest','Rivet Mail','Furnace Guard','Chain Link Vest','Piston-Braced Plate',
+  ],
+  glove: [
+    'Cloth Gloves','Gym Gloves','Leather Gloves','Studded Gloves','Brass Knuckles',
+    'Light Metal Gloves','Gauntlet','Metal Gloves','Cotton Wraps','Fingerless Gloves',
+    'Wool Mitts','Canvas Grips','Denim Gloves','Rubber Grips','Padded Mitts',
+    'Work Gloves','Cord-Wrapped Fists','Burlap Wraps','Hide Gloves','Resin-Coated Grips',
+    'Suede Gloves','Carpenter Grips','Twine Wraps','Bone Knuckles','Ghost Wraps',
+    'Tombstone Fists','Hex Gauntlets','Phantom Grips','Coffin Iron Fists','Banshee Wraps',
+    'Grave Iron Gauntlets','Shadow Grips','Wraith Knuckles','Soulfire Gauntlets','Cursed Mitts',
+    'Crypt Iron Fists','Nightshade Gloves','Darkfire Gauntlets','Moonlit Wraps','Dread Fists',
+    'Bark Gauntlets','Vine Wraps','Thorn Knuckles','Moss-Padded Gloves','Fungal Grips',
+    'Serpent Scale Fists','Coral Gauntlets','Amber-Coated Fists','Bramble Wraps','Reed-Woven Gloves',
+    'Stinger Knuckles','Bog Iron Fists','Petrified Wood Grips','Mangrove Gauntlets','Leech-Hide Gloves',
+    'Spore Fists','Turtle Shell Knuckles','Scrap Metal Fists','Rivet Gauntlets','Gear-Plated Gloves',
+    'Wrench Knuckles','Piston Gauntlets','Spark Plug Fists','Coal Ember Grips','Chain Link Gloves','Furnace Gauntlets',
+  ],
+  feet: [
+    'Slippers','Leather Shoes','Sneakers','Army Boots','Sturdy Boots',
+    'Light Metal Boots','Iron Toes','Metal Boots','Canvas Boots','Denim Treads',
+    'Linen Wraps','Patchwork Boots','Rubber Stompers','Bark Treads','Woodsole Boots',
+    'Quilted Wraps','Cobbler Boots','Hide Stompers','Villager Treads','Twine-Laced Boots',
+    'Roughspun Wraps','Tanner Boots','Rawhide Treads','Hardwood Sabatons','Homestead Boots',
+    'Reed Wraps','Fieldwork Boots','Rope-Bound Treads','Gravewalker Boots','Bone Treads',
+    'Tombstone Greaves','Phantom Boots','Spectral Wraps','Grave Iron Sabatons','Shade Treads',
+    'Coffin Nail Boots','Wraith Stompers','Hollow Greaves','Dusk Boots','Spirit Treads',
+    'Crypt Sabatons','Wailing Wraps','Nightshade Boots','Cursed Step Greaves','Revenant Treads',
+    'Deathchill Boots','Soul Greaves','Gallows Stompers','Mossclad Boots','Vinebound Wraps',
+    'Fungal Treads','Bogwalker Boots','Thornstep Greaves','Resin Stompers','Serpent Scale Boots',
+    'Swamp Root Treads','Lily Pad Wraps','Briar Boots','Amber Sabatons','Frog Skin Boots',
+    'Mangrove Greaves','Toadstool Treads','Venom Wraps','Wildroot Boots','Scale-Tipped Boots','Marsh Stompers',
+  ],
+  hat: [
+    'Straw Cap','Cotton Hood','Linen Headband','Leather Cap','Burlap Hood',
+    'Woodsman Helm','Tin Cap','Patchwork Hood','Canvas Headband','Hide Helm',
+    'Wicker Cap','Cork Helm','Rope Headband','Cobbler Cap','Denim Hood',
+    'Tanner Helm','Rawhide Cap','Reed Headband','Fieldwork Hood','Copper Band Helm',
+    'Thatch Cap','Villager Headband','Homestead Helm','Gravedigger Helm','Bone Crown',
+    'Phantom Hood','Tombstone Helm','Spectral Headband','Coffin Lid Cap','Shade Visor',
+    'Wraith Crown','Crypt Mask','Grave Iron Helm','Dusk Hood','Spirit Crown',
+    'Deathchill Visor','Banshee Mask','Hollow Helm','Revenant Headband','Nightshade Crown',
+    'Soul Visor','Cursed Step Hood','Gallows Helm','Moss Helm','Vine Crown',
+    'Bark Visor','Fungal Cap','Thorn Crown','Bog Hood','Amber Helm',
+    'Frog Skin Cap','Mangrove Mask','Serpent Scale Hood','Briar Headband','Swamp Root Helm',
+    'Lily Pad Cap','Resin Visor','Spore Mask','Creeper Hood','Toadstool Helm',
+    'Venom Crown','Scale Cap','Wildroot Headband','Barkskin Cap','Gear Helm','Steam Vent Hood',
+  ],
+  ring: [
+    'Tin Ring','Copper Band','Pebble Ring','Wooden Loop','Thread Ring',
+    'Cork Band','Leather Loop','Brass Ring','Iron Band','Penny Ring',
+    'Twig Circlet','Button Band','Nail Ring','Wax Seal Ring','Hemp Loop',
+    'Rivet Band','Spool Ring','Clothespin Band','Acorn Ring','Chalk Ring',
+    'Slate Band','Thimble Ring','Flint Signet','Grave Dust Ring','Bone Band',
+    'Phantom Loop','Coffin Wood Ring','Tombseal Signet','Crypt Iron Band','Shadow Ring',
+    'Spectral Seal','Gravekeeper Ring','Hollow Bone Ring','Dusk Signet','Revenant Band',
+    'Wraith Loop','Nightshade Ring','Coffin Nail Band','Soul Ember Ring','Death Knell Band',
+    'Ghoul Bone Loop','Cursed Signet','Banshee Ring','Moss Ring','Vine Loop',
+    'Thorn Band','Amber Ring','Root Signet','Serpent Scale Band','Fungal Ring',
+    'Swamp Resin Loop','Briar Band','Coral Ring','Lily Seal','Frog Eye Ring',
+    'Marsh Gas Band','Venom Loop','Bark Signet','Spore Ring','Scale Band',
+    'Bog Iron Ring','Mangrove Loop','Pitcher Plant Seal','Creeper Loop','Gear Ring','Bolt Band',
+  ],
+  necklace: [
+    'Scarf','Army Dog Tag','Pendant','Gold Chain','Emerald Gem',
+    'Lucky Charm','Diamond Band','Metal Collar','Cord Necklace','Wooden Pendant',
+    'Bead Necklace','Leather Choker','Copper Pendant','Shell Necklace','Button Chain',
+    'Hemp Choker','Glass Bead Strand','Tin Locket','Bolt Necklace','Stone Pendant',
+    'Wire Choker','Feather Necklace','Coin Pendant','Brass Tag','Leather Medallion',
+    'Bone Charm','Ghost Locket','Tombstone Shard','Hex Amulet','Phantom Chain',
+    'Coffin Nail Pendant','Banshee Tooth','Grave Iron Collar','Wraith Pendant','Soulfire Amulet',
+    'Shadow Medallion','Cursed Locket','Dread Torc','Darkfire Pendant','Nightshade Choker',
+    'Blight Amulet','Crypt Chain','Moonlit Pendant','Thorn Choker','Spore Pendant',
+    'Venom Fang Necklace','Moss Amulet','Amber Pendant','Bark Medallion','Coral Choker',
+    'Serpent Scale Pendant','Vine Torc','Fungal Charm','Resin Locket','Bramble Chain',
+    'Stinger Pendant','Bog Iron Torc','Leech Stone Amulet','Petrified Fang','Gear Pendant',
+    'Spark Plug Charm','Bolt Chain','Scrap Medal','Rivet Collar','Coal Ember Pendant','Furnace Chain',
+  ],
+  waist: [
+    'Cloth Sash','Army Belt','Leather Belt','Lucky Belt','Poison Belt',
+    'Dairy Cow Belt','Assassin Belt','Metal Belt','Cotton Sash','Rope Belt',
+    'Twine Cord','Canvas Belt','Wool Sash','Denim Strap','Burlap Cord',
+    'Hide Belt','Flannel Sash','Padded Belt','Rubber Strap','Woven Cord',
+    'Suede Belt','Carpenter Strap','Quilted Sash','Bone Chain Belt','Ghost Sash',
+    'Tombstone Girdle','Hex-Warded Belt','Phantom Cord','Coffin Iron Belt','Banshee Sash',
+    'Grave Iron Chain','Shadow Strap','Wraith Cord','Soulfire Belt','Cursed Cinch',
+    'Crypt Iron Girdle','Nightshade Sash','Darkfire Belt','Moonlit Cord','Dread Girdle',
+    'Bark Belt','Vine Cord','Thorn Strap','Moss Sash','Fungal Belt',
+    'Serpent Scale Girdle','Coral Belt','Amber Cinch','Bramble Cord','Reed-Woven Belt',
+    'Bog Iron Girdle','Mangrove Strap','Leech-Hide Belt','Spore Sash','Turtle Shell Girdle',
+    'Ironwood Belt','Petrified Bark Strap','Scrap Chain Belt','Tin Can Girdle','Boiler Strap',
+    'Gear Belt','Rivet Chain','Furnace Girdle','Piston Belt','Wrench Strap','Smokesteel Cinch',
+  ],
+};
+const CSV_SCORES = {
+  weapon: {
+    0: {Common: 16.28, Uncommon: 21.98, Rare: 29.3, Epic: 39.07, Legendary: 52.1},
+    1: {Common: 17.6, Uncommon: 23.76, Rare: 31.68, Epic: 42.24, Legendary: 56.32},
+    2: {Common: 18.64, Uncommon: 25.16, Rare: 33.55, Epic: 44.74, Legendary: 59.65},
+    3: {Common: 19.67, Uncommon: 26.55, Rare: 35.41, Epic: 47.21, Legendary: 62.94},
+    4: {Common: 21.06, Uncommon: 28.43, Rare: 37.91, Epic: 50.54, Legendary: 67.39},
+    5: {Common: 22.12, Uncommon: 29.86, Rare: 39.82, Epic: 53.09, Legendary: 70.78},
+    6: {Common: 23.17, Uncommon: 31.28, Rare: 41.71, Epic: 55.61, Legendary: 74.14},
+    7: {Common: 24.63, Uncommon: 33.25, Rare: 44.33, Epic: 59.11, Legendary: 78.82},
+    8: {Common: 25.7, Uncommon: 34.7, Rare: 46.26, Epic: 61.68, Legendary: 82.24},
+    9: {Common: 26.77, Uncommon: 36.14, Rare: 48.19, Epic: 64.25, Legendary: 85.66},
+    10: {Common: 28.31, Uncommon: 38.22, Rare: 50.96, Epic: 67.94, Legendary: 90.59},
+    11: {Common: 29.4, Uncommon: 39.69, Rare: 52.92, Epic: 70.56, Legendary: 94.08},
+    12: {Common: 30.49, Uncommon: 41.16, Rare: 54.88, Epic: 73.18, Legendary: 97.57},
+    13: {Common: 32.09, Uncommon: 43.32, Rare: 57.76, Epic: 77.02, Legendary: 102.69},
+    14: {Common: 33.2, Uncommon: 44.82, Rare: 59.76, Epic: 79.68, Legendary: 106.24},
+    15: {Common: 34.31, Uncommon: 46.32, Rare: 61.76, Epic: 82.34, Legendary: 109.79},
+    16: {Common: 35.99, Uncommon: 48.59, Rare: 64.78, Epic: 86.38, Legendary: 115.17},
+    17: {Common: 37.11, Uncommon: 50.1, Rare: 66.8, Epic: 89.06, Legendary: 118.75},
+    18: {Common: 38.84, Uncommon: 52.43, Rare: 69.91, Epic: 93.22, Legendary: 124.29},
+    19: {Common: 39.98, Uncommon: 53.97, Rare: 71.96, Epic: 95.95, Legendary: 127.94},
+    20: {Common: 41.13, Uncommon: 55.53, Rare: 74.03, Epic: 98.71, Legendary: 131.62},
+    21: {Common: 42.93, Uncommon: 57.96, Rare: 77.27, Epic: 103.03, Legendary: 137.38},
+    22: {Common: 44.09, Uncommon: 59.52, Rare: 79.36, Epic: 105.82, Legendary: 141.09},
+    23: {Common: 45.25, Uncommon: 61.09, Rare: 81.45, Epic: 108.6, Legendary: 144.8},
+    24: {Common: 50.6, Uncommon: 68.31, Rare: 91.08, Epic: 121.44, Legendary: 161.92},
+    25: {Common: 54.14, Uncommon: 73.09, Rare: 97.45, Epic: 129.94, Legendary: 173.25},
+    26: {Common: 56.91, Uncommon: 76.83, Rare: 102.44, Epic: 136.58, Legendary: 182.11},
+    27: {Common: 60.57, Uncommon: 81.77, Rare: 109.03, Epic: 145.37, Legendary: 193.82},
+    28: {Common: 64.3, Uncommon: 86.81, Rare: 115.74, Epic: 154.32, Legendary: 205.76},
+    29: {Common: 68.12, Uncommon: 91.96, Rare: 122.62, Epic: 163.49, Legendary: 217.98},
+    30: {Common: 72.03, Uncommon: 97.24, Rare: 129.65, Epic: 172.87, Legendary: 230.5},
+    31: {Common: 76.0, Uncommon: 102.6, Rare: 136.8, Epic: 182.4, Legendary: 243.2},
+    32: {Common: 78.99, Uncommon: 106.64, Rare: 142.18, Epic: 189.58, Legendary: 252.77},
+    33: {Common: 83.11, Uncommon: 112.2, Rare: 149.6, Epic: 199.46, Legendary: 265.95},
+    34: {Common: 87.28, Uncommon: 117.83, Rare: 157.1, Epic: 209.47, Legendary: 279.3},
+    35: {Common: 91.56, Uncommon: 123.61, Rare: 164.81, Epic: 219.74, Legendary: 292.99},
+    36: {Common: 95.9, Uncommon: 129.47, Rare: 172.62, Epic: 230.16, Legendary: 306.88},
+    37: {Common: 100.34, Uncommon: 135.46, Rare: 180.61, Epic: 240.82, Legendary: 321.09},
+    38: {Common: 103.53, Uncommon: 139.77, Rare: 186.35, Epic: 248.47, Legendary: 331.3},
+    39: {Common: 108.07, Uncommon: 145.89, Rare: 194.53, Epic: 259.37, Legendary: 345.82},
+    40: {Common: 112.72, Uncommon: 152.17, Rare: 202.9, Epic: 270.53, Legendary: 360.7},
+    41: {Common: 117.44, Uncommon: 158.54, Rare: 211.39, Epic: 281.86, Legendary: 375.81},
+    42: {Common: 122.23, Uncommon: 165.01, Rare: 220.01, Epic: 293.35, Legendary: 391.14},
+    43: {Common: 127.08, Uncommon: 171.56, Rare: 228.74, Epic: 304.99, Legendary: 406.66},
+    44: {Common: 130.41, Uncommon: 176.05, Rare: 234.74, Epic: 312.98, Legendary: 417.31},
+    45: {Common: 135.38, Uncommon: 182.76, Rare: 243.68, Epic: 324.91, Legendary: 433.22},
+    46: {Common: 140.43, Uncommon: 189.58, Rare: 252.77, Epic: 337.03, Legendary: 449.38},
+    47: {Common: 145.56, Uncommon: 196.51, Rare: 262.01, Epic: 349.34, Legendary: 465.79},
+    48: {Common: 150.75, Uncommon: 203.51, Rare: 271.35, Epic: 361.8, Legendary: 482.4},
+    49: {Common: 156.05, Uncommon: 210.67, Rare: 280.89, Epic: 374.52, Legendary: 499.36},
+    50: {Common: 159.61, Uncommon: 215.47, Rare: 287.3, Epic: 383.06, Legendary: 510.75},
+    51: {Common: 165.02, Uncommon: 222.78, Rare: 297.04, Epic: 396.05, Legendary: 528.06},
+    52: {Common: 170.51, Uncommon: 230.19, Rare: 306.92, Epic: 409.22, Legendary: 545.63},
+    53: {Common: 176.07, Uncommon: 237.69, Rare: 316.93, Epic: 422.57, Legendary: 563.42},
+    54: {Common: 181.77, Uncommon: 245.39, Rare: 327.19, Epic: 436.25, Legendary: 581.66},
+    55: {Common: 187.81, Uncommon: 253.54, Rare: 338.06, Epic: 450.74, Legendary: 600.99},
+    56: {Common: 193.96, Uncommon: 261.85, Rare: 349.13, Epic: 465.5, Legendary: 620.67},
+    57: {Common: 198.07, Uncommon: 267.39, Rare: 356.53, Epic: 475.37, Legendary: 633.82},
+    58: {Common: 204.35, Uncommon: 275.87, Rare: 367.83, Epic: 490.44, Legendary: 653.92},
+    59: {Common: 210.7, Uncommon: 284.44, Rare: 379.26, Epic: 505.68, Legendary: 674.24},
+    60: {Common: 217.15, Uncommon: 293.15, Rare: 390.87, Epic: 521.16, Legendary: 694.88},
+    61: {Common: 223.68, Uncommon: 301.97, Rare: 402.62, Epic: 536.83, Legendary: 715.78},
+    62: {Common: 236.41, Uncommon: 319.15, Rare: 425.54, Epic: 567.38, Legendary: 756.51},
+    63: {Common: 243.41, Uncommon: 328.6, Rare: 438.14, Epic: 584.18, Legendary: 778.91},
+    64: {Common: 250.53, Uncommon: 338.22, Rare: 450.95, Epic: 601.27, Legendary: 801.7},
+    65: {Common: 257.72, Uncommon: 347.92, Rare: 463.9, Epic: 618.53, Legendary: 824.7},
+  },
+  armor: {
+    0: {Common: 27.42, Uncommon: 37.02, Rare: 49.36, Epic: 65.81, Legendary: 87.74},
+    1: {Common: 30.17, Uncommon: 40.73, Rare: 54.31, Epic: 72.41, Legendary: 96.54},
+    2: {Common: 32.99, Uncommon: 44.54, Rare: 59.38, Epic: 79.18, Legendary: 105.57},
+    3: {Common: 35.34, Uncommon: 47.71, Rare: 63.61, Epic: 84.82, Legendary: 113.09},
+    4: {Common: 38.27, Uncommon: 51.66, Rare: 68.89, Epic: 91.85, Legendary: 122.46},
+    5: {Common: 41.27, Uncommon: 55.71, Rare: 74.29, Epic: 99.05, Legendary: 132.06},
+    6: {Common: 44.34, Uncommon: 59.86, Rare: 79.81, Epic: 106.42, Legendary: 141.89},
+    7: {Common: 46.8, Uncommon: 63.18, Rare: 84.24, Epic: 112.32, Legendary: 149.76},
+    8: {Common: 49.98, Uncommon: 67.47, Rare: 89.96, Epic: 119.95, Legendary: 159.94},
+    9: {Common: 53.23, Uncommon: 71.86, Rare: 95.81, Epic: 127.75, Legendary: 170.34},
+    10: {Common: 55.76, Uncommon: 75.28, Rare: 100.37, Epic: 133.82, Legendary: 178.43},
+    11: {Common: 59.12, Uncommon: 79.81, Rare: 106.42, Epic: 141.89, Legendary: 189.18},
+    12: {Common: 62.55, Uncommon: 84.44, Rare: 112.59, Epic: 150.12, Legendary: 200.16},
+    13: {Common: 66.04, Uncommon: 89.15, Rare: 118.87, Epic: 158.5, Legendary: 211.33},
+    14: {Common: 68.69, Uncommon: 92.73, Rare: 123.64, Epic: 164.86, Legendary: 219.81},
+    15: {Common: 72.29, Uncommon: 97.59, Rare: 130.12, Epic: 173.5, Legendary: 231.33},
+    16: {Common: 75.97, Uncommon: 102.56, Rare: 136.75, Epic: 182.33, Legendary: 243.1},
+    17: {Common: 78.68, Uncommon: 106.22, Rare: 141.62, Epic: 188.83, Legendary: 251.78},
+    18: {Common: 82.47, Uncommon: 111.33, Rare: 148.45, Epic: 197.93, Legendary: 263.9},
+    19: {Common: 86.32, Uncommon: 116.53, Rare: 155.38, Epic: 207.17, Legendary: 276.22},
+    20: {Common: 90.25, Uncommon: 121.84, Rare: 162.45, Epic: 216.6, Legendary: 288.8},
+    21: {Common: 93.07, Uncommon: 125.64, Rare: 167.53, Epic: 223.37, Legendary: 297.82},
+    22: {Common: 97.1, Uncommon: 131.09, Rare: 174.78, Epic: 233.04, Legendary: 310.72},
+    23: {Common: 101.21, Uncommon: 136.63, Rare: 182.18, Epic: 242.9, Legendary: 323.87},
+    24: {Common: 112.83, Uncommon: 152.32, Rare: 203.09, Epic: 270.79, Legendary: 361.06},
+    25: {Common: 122.41, Uncommon: 165.25, Rare: 220.34, Epic: 293.78, Legendary: 391.71},
+    26: {Common: 132.3, Uncommon: 178.61, Rare: 238.14, Epic: 317.52, Legendary: 423.36},
+    27: {Common: 140.94, Uncommon: 190.27, Rare: 253.69, Epic: 338.26, Legendary: 451.01},
+    28: {Common: 151.4, Uncommon: 204.39, Rare: 272.52, Epic: 363.36, Legendary: 484.48},
+    29: {Common: 162.18, Uncommon: 218.94, Rare: 291.92, Epic: 389.23, Legendary: 518.98},
+    30: {Common: 171.44, Uncommon: 231.44, Rare: 308.59, Epic: 411.46, Legendary: 548.61},
+    31: {Common: 182.81, Uncommon: 246.79, Rare: 329.06, Epic: 438.74, Legendary: 584.99},
+    32: {Common: 192.47, Uncommon: 259.83, Rare: 346.45, Epic: 461.93, Legendary: 615.9},
+    33: {Common: 204.38, Uncommon: 275.91, Rare: 367.88, Epic: 490.51, Legendary: 654.02},
+    34: {Common: 216.61, Uncommon: 292.42, Rare: 389.9, Epic: 519.86, Legendary: 693.15},
+    35: {Common: 226.95, Uncommon: 306.38, Rare: 408.51, Epic: 544.68, Legendary: 726.24},
+    36: {Common: 239.75, Uncommon: 323.66, Rare: 431.55, Epic: 575.4, Legendary: 767.2},
+    37: {Common: 252.87, Uncommon: 341.37, Rare: 455.17, Epic: 606.89, Legendary: 809.18},
+    38: {Common: 263.82, Uncommon: 356.16, Rare: 474.88, Epic: 633.17, Legendary: 844.22},
+    39: {Common: 277.53, Uncommon: 374.67, Rare: 499.55, Epic: 666.07, Legendary: 888.1},
+    40: {Common: 291.54, Uncommon: 393.58, Rare: 524.77, Epic: 699.7, Legendary: 932.93},
+    41: {Common: 303.14, Uncommon: 409.24, Rare: 545.65, Epic: 727.54, Legendary: 970.05},
+    42: {Common: 317.71, Uncommon: 428.91, Rare: 571.88, Epic: 762.5, Legendary: 1016.67},
+    43: {Common: 332.53, Uncommon: 448.92, Rare: 598.55, Epic: 798.07, Legendary: 1064.1},
+    44: {Common: 344.69, Uncommon: 465.33, Rare: 620.44, Epic: 827.26, Legendary: 1103.01},
+    45: {Common: 360.04, Uncommon: 486.05, Rare: 648.07, Epic: 864.1, Legendary: 1152.13},
+    46: {Common: 375.74, Uncommon: 507.25, Rare: 676.33, Epic: 901.78, Legendary: 1202.37},
+    47: {Common: 388.52, Uncommon: 524.5, Rare: 699.34, Epic: 932.45, Legendary: 1243.26},
+    48: {Common: 404.77, Uncommon: 546.44, Rare: 728.59, Epic: 971.45, Legendary: 1295.26},
+    49: {Common: 417.95, Uncommon: 564.23, Rare: 752.31, Epic: 1003.08, Legendary: 1337.44},
+    50: {Common: 434.77, Uncommon: 586.94, Rare: 782.59, Epic: 1043.45, Legendary: 1391.26},
+    51: {Common: 451.87, Uncommon: 610.02, Rare: 813.37, Epic: 1084.49, Legendary: 1445.98},
+    52: {Common: 465.72, Uncommon: 628.72, Rare: 838.3, Epic: 1117.73, Legendary: 1490.3},
+    53: {Common: 483.38, Uncommon: 652.56, Rare: 870.08, Epic: 1160.11, Legendary: 1546.82},
+    54: {Common: 501.48, Uncommon: 677.0, Rare: 902.66, Epic: 1203.55, Legendary: 1604.74},
+    55: {Common: 516.78, Uncommon: 697.65, Rare: 930.2, Epic: 1240.27, Legendary: 1653.7},
+    56: {Common: 536.19, Uncommon: 723.86, Rare: 965.14, Epic: 1286.86, Legendary: 1715.81},
+    57: {Common: 555.95, Uncommon: 750.53, Rare: 1000.71, Epic: 1334.28, Legendary: 1779.04},
+    58: {Common: 576.02, Uncommon: 777.63, Rare: 1036.84, Epic: 1382.45, Legendary: 1843.26},
+    59: {Common: 596.46, Uncommon: 805.22, Rare: 1073.63, Epic: 1431.5, Legendary: 1908.67},
+    60: {Common: 612.97, Uncommon: 827.51, Rare: 1103.35, Epic: 1471.13, Legendary: 1961.5},
+    61: {Common: 634.01, Uncommon: 855.91, Rare: 1141.22, Epic: 1521.62, Legendary: 2028.83},
+    62: {Common: 671.0, Uncommon: 905.85, Rare: 1207.8, Epic: 1610.4, Legendary: 2147.2},
+    63: {Common: 693.57, Uncommon: 936.32, Rare: 1248.43, Epic: 1664.57, Legendary: 2219.42},
+    64: {Common: 716.48, Uncommon: 967.25, Rare: 1289.66, Epic: 1719.55, Legendary: 2292.74},
+    65: {Common: 739.78, Uncommon: 998.7, Rare: 1331.6, Epic: 1775.47, Legendary: 2367.3},
+  },
+  glove: {
+    0: {Common: 7.71, Uncommon: 10.41, Rare: 13.88, Epic: 18.5, Legendary: 24.67},
+    1: {Common: 8.19, Uncommon: 11.06, Rare: 14.74, Epic: 19.66, Legendary: 26.21},
+    2: {Common: 8.68, Uncommon: 11.72, Rare: 15.62, Epic: 20.83, Legendary: 27.78},
+    3: {Common: 9.16, Uncommon: 12.37, Rare: 16.49, Epic: 21.98, Legendary: 29.31},
+    4: {Common: 9.64, Uncommon: 13.01, Rare: 17.35, Epic: 23.14, Legendary: 30.85},
+    5: {Common: 10.12, Uncommon: 13.66, Rare: 18.22, Epic: 24.29, Legendary: 32.38},
+    6: {Common: 10.8, Uncommon: 14.58, Rare: 19.44, Epic: 25.92, Legendary: 34.56},
+    7: {Common: 11.29, Uncommon: 15.24, Rare: 20.32, Epic: 27.1, Legendary: 36.13},
+    8: {Common: 11.78, Uncommon: 15.9, Rare: 21.2, Epic: 28.27, Legendary: 37.7},
+    9: {Common: 12.27, Uncommon: 16.56, Rare: 22.09, Epic: 29.45, Legendary: 39.26},
+    10: {Common: 12.76, Uncommon: 17.23, Rare: 22.97, Epic: 30.62, Legendary: 40.83},
+    11: {Common: 13.49, Uncommon: 18.21, Rare: 24.28, Epic: 32.38, Legendary: 43.17},
+    12: {Common: 13.99, Uncommon: 18.89, Rare: 25.18, Epic: 33.58, Legendary: 44.77},
+    13: {Common: 14.49, Uncommon: 19.56, Rare: 26.08, Epic: 34.78, Legendary: 46.37},
+    14: {Common: 14.99, Uncommon: 20.24, Rare: 26.98, Epic: 35.98, Legendary: 47.97},
+    15: {Common: 15.49, Uncommon: 20.91, Rare: 27.88, Epic: 37.18, Legendary: 49.57},
+    16: {Common: 15.99, Uncommon: 21.59, Rare: 28.78, Epic: 38.38, Legendary: 51.17},
+    17: {Common: 16.79, Uncommon: 22.67, Rare: 30.22, Epic: 40.3, Legendary: 53.73},
+    18: {Common: 17.3, Uncommon: 23.36, Rare: 31.14, Epic: 41.52, Legendary: 55.36},
+    19: {Common: 17.81, Uncommon: 24.04, Rare: 32.06, Epic: 42.74, Legendary: 56.99},
+    20: {Common: 18.31, Uncommon: 24.72, Rare: 32.96, Epic: 43.94, Legendary: 58.59},
+    21: {Common: 18.82, Uncommon: 25.41, Rare: 33.88, Epic: 45.17, Legendary: 60.22},
+    22: {Common: 19.67, Uncommon: 26.55, Rare: 35.41, Epic: 47.21, Legendary: 62.94},
+    23: {Common: 20.19, Uncommon: 27.26, Rare: 36.34, Epic: 48.46, Legendary: 64.61},
+    24: {Common: 21.89, Uncommon: 29.55, Rare: 39.4, Epic: 52.54, Legendary: 70.05},
+    25: {Common: 23.47, Uncommon: 31.68, Rare: 42.25, Epic: 56.33, Legendary: 75.1},
+    26: {Common: 24.69, Uncommon: 33.33, Rare: 44.44, Epic: 59.26, Legendary: 79.01},
+    27: {Common: 26.34, Uncommon: 35.56, Rare: 47.41, Epic: 63.22, Legendary: 84.29},
+    28: {Common: 27.56, Uncommon: 37.21, Rare: 49.61, Epic: 66.14, Legendary: 88.19},
+    29: {Common: 28.78, Uncommon: 38.85, Rare: 51.8, Epic: 69.07, Legendary: 92.1},
+    30: {Common: 30.51, Uncommon: 41.19, Rare: 54.92, Epic: 73.22, Legendary: 97.63},
+    31: {Common: 31.76, Uncommon: 42.88, Rare: 57.17, Epic: 76.22, Legendary: 101.63},
+    32: {Common: 33.55, Uncommon: 45.29, Rare: 60.39, Epic: 80.52, Legendary: 107.36},
+    33: {Common: 34.81, Uncommon: 46.99, Rare: 62.66, Epic: 83.54, Legendary: 111.39},
+    34: {Common: 36.67, Uncommon: 49.5, Rare: 66.01, Epic: 88.01, Legendary: 117.34},
+    35: {Common: 37.95, Uncommon: 51.23, Rare: 68.31, Epic: 91.08, Legendary: 121.44},
+    36: {Common: 39.23, Uncommon: 52.96, Rare: 70.61, Epic: 94.15, Legendary: 125.54},
+    37: {Common: 41.16, Uncommon: 55.57, Rare: 74.09, Epic: 98.78, Legendary: 131.71},
+    38: {Common: 42.47, Uncommon: 57.33, Rare: 76.45, Epic: 101.93, Legendary: 135.9},
+    39: {Common: 44.48, Uncommon: 60.05, Rare: 80.06, Epic: 106.75, Legendary: 142.34},
+    40: {Common: 45.78, Uncommon: 61.8, Rare: 82.4, Epic: 109.87, Legendary: 146.5},
+    41: {Common: 47.11, Uncommon: 63.6, Rare: 84.8, Epic: 113.06, Legendary: 150.75},
+    42: {Common: 49.19, Uncommon: 66.41, Rare: 88.54, Epic: 118.06, Legendary: 157.41},
+    43: {Common: 50.52, Uncommon: 68.2, Rare: 90.94, Epic: 121.25, Legendary: 161.66},
+    44: {Common: 52.65, Uncommon: 71.08, Rare: 94.77, Epic: 126.36, Legendary: 168.48},
+    45: {Common: 53.99, Uncommon: 72.89, Rare: 97.18, Epic: 129.58, Legendary: 172.77},
+    46: {Common: 56.16, Uncommon: 75.82, Rare: 101.09, Epic: 134.78, Legendary: 179.71},
+    47: {Common: 57.55, Uncommon: 77.69, Rare: 103.59, Epic: 138.12, Legendary: 184.16},
+    48: {Common: 58.92, Uncommon: 79.54, Rare: 106.06, Epic: 141.41, Legendary: 188.54},
+    49: {Common: 61.19, Uncommon: 82.61, Rare: 110.14, Epic: 146.86, Legendary: 195.81},
+    50: {Common: 62.57, Uncommon: 84.47, Rare: 112.63, Epic: 150.17, Legendary: 200.22},
+    51: {Common: 64.89, Uncommon: 87.6, Rare: 116.8, Epic: 155.74, Legendary: 207.65},
+    52: {Common: 66.31, Uncommon: 89.52, Rare: 119.36, Epic: 159.14, Legendary: 212.19},
+    53: {Common: 67.72, Uncommon: 91.42, Rare: 121.9, Epic: 162.53, Legendary: 216.7},
+    54: {Common: 70.13, Uncommon: 94.68, Rare: 126.23, Epic: 168.31, Legendary: 224.42},
+    55: {Common: 71.7, Uncommon: 96.8, Rare: 129.06, Epic: 172.08, Legendary: 229.44},
+    56: {Common: 74.28, Uncommon: 100.28, Rare: 133.7, Epic: 178.27, Legendary: 237.7},
+    57: {Common: 75.86, Uncommon: 102.41, Rare: 136.55, Epic: 182.06, Legendary: 242.75},
+    58: {Common: 78.5, Uncommon: 105.98, Rare: 141.3, Epic: 188.4, Legendary: 251.2},
+    59: {Common: 80.12, Uncommon: 108.16, Rare: 144.22, Epic: 192.29, Legendary: 256.38},
+    60: {Common: 82.81, Uncommon: 111.79, Rare: 149.06, Epic: 198.74, Legendary: 264.99},
+    61: {Common: 84.45, Uncommon: 114.01, Rare: 152.01, Epic: 202.68, Legendary: 270.24},
+    62: {Common: 88.66, Uncommon: 119.69, Rare: 159.59, Epic: 212.78, Legendary: 283.71},
+    63: {Common: 90.37, Uncommon: 122.0, Rare: 162.67, Epic: 216.89, Legendary: 289.18},
+    64: {Common: 93.34, Uncommon: 126.01, Rare: 168.01, Epic: 224.02, Legendary: 298.69},
+    65: {Common: 95.07, Uncommon: 128.34, Rare: 171.13, Epic: 228.17, Legendary: 304.22},
+  },
+  feet: {
+    0: {Common: 16.28, Uncommon: 21.98, Rare: 29.3, Epic: 39.07, Legendary: 52.1},
+    1: {Common: 17.6, Uncommon: 23.76, Rare: 31.68, Epic: 42.24, Legendary: 56.32},
+    2: {Common: 18.64, Uncommon: 25.16, Rare: 33.55, Epic: 44.74, Legendary: 59.65},
+    3: {Common: 19.67, Uncommon: 26.55, Rare: 35.41, Epic: 47.21, Legendary: 62.94},
+    4: {Common: 21.06, Uncommon: 28.43, Rare: 37.91, Epic: 50.54, Legendary: 67.39},
+    5: {Common: 22.12, Uncommon: 29.86, Rare: 39.82, Epic: 53.09, Legendary: 70.78},
+    6: {Common: 23.17, Uncommon: 31.28, Rare: 41.71, Epic: 55.61, Legendary: 74.14},
+    7: {Common: 24.63, Uncommon: 33.25, Rare: 44.33, Epic: 59.11, Legendary: 78.82},
+    8: {Common: 25.7, Uncommon: 34.7, Rare: 46.26, Epic: 61.68, Legendary: 82.24},
+    9: {Common: 26.77, Uncommon: 36.14, Rare: 48.19, Epic: 64.25, Legendary: 85.66},
+    10: {Common: 28.31, Uncommon: 38.22, Rare: 50.96, Epic: 67.94, Legendary: 90.59},
+    11: {Common: 29.4, Uncommon: 39.69, Rare: 52.92, Epic: 70.56, Legendary: 94.08},
+    12: {Common: 30.49, Uncommon: 41.16, Rare: 54.88, Epic: 73.18, Legendary: 97.57},
+    13: {Common: 32.09, Uncommon: 43.32, Rare: 57.76, Epic: 77.02, Legendary: 102.69},
+    14: {Common: 33.2, Uncommon: 44.82, Rare: 59.76, Epic: 79.68, Legendary: 106.24},
+    15: {Common: 34.31, Uncommon: 46.32, Rare: 61.76, Epic: 82.34, Legendary: 109.79},
+    16: {Common: 35.99, Uncommon: 48.59, Rare: 64.78, Epic: 86.38, Legendary: 115.17},
+    17: {Common: 37.11, Uncommon: 50.1, Rare: 66.8, Epic: 89.06, Legendary: 118.75},
+    18: {Common: 38.84, Uncommon: 52.43, Rare: 69.91, Epic: 93.22, Legendary: 124.29},
+    19: {Common: 39.98, Uncommon: 53.97, Rare: 71.96, Epic: 95.95, Legendary: 127.94},
+    20: {Common: 41.13, Uncommon: 55.53, Rare: 74.03, Epic: 98.71, Legendary: 131.62},
+    21: {Common: 42.93, Uncommon: 57.96, Rare: 77.27, Epic: 103.03, Legendary: 137.38},
+    22: {Common: 44.09, Uncommon: 59.52, Rare: 79.36, Epic: 105.82, Legendary: 141.09},
+    23: {Common: 45.25, Uncommon: 61.09, Rare: 81.45, Epic: 108.6, Legendary: 144.8},
+    24: {Common: 50.33, Uncommon: 67.95, Rare: 90.59, Epic: 120.79, Legendary: 161.06},
+    25: {Common: 53.03, Uncommon: 71.59, Rare: 95.45, Epic: 127.27, Legendary: 169.7},
+    26: {Common: 56.56, Uncommon: 76.36, Rare: 101.81, Epic: 135.74, Legendary: 180.99},
+    27: {Common: 60.18, Uncommon: 81.24, Rare: 108.32, Epic: 144.43, Legendary: 192.58},
+    28: {Common: 63.87, Uncommon: 86.22, Rare: 114.97, Epic: 153.29, Legendary: 204.38},
+    29: {Common: 67.65, Uncommon: 91.33, Rare: 121.77, Epic: 162.36, Legendary: 216.48},
+    30: {Common: 71.51, Uncommon: 96.54, Rare: 128.72, Epic: 171.62, Legendary: 228.83},
+    31: {Common: 74.41, Uncommon: 100.45, Rare: 133.94, Epic: 178.58, Legendary: 238.11},
+    32: {Common: 78.39, Uncommon: 105.83, Rare: 141.1, Epic: 188.14, Legendary: 250.85},
+    33: {Common: 82.46, Uncommon: 111.32, Rare: 148.43, Epic: 197.9, Legendary: 263.87},
+    34: {Common: 86.59, Uncommon: 116.9, Rare: 155.86, Epic: 207.82, Legendary: 277.09},
+    35: {Common: 90.81, Uncommon: 122.59, Rare: 163.46, Epic: 217.94, Legendary: 290.59},
+    36: {Common: 95.1, Uncommon: 128.38, Rare: 171.18, Epic: 228.24, Legendary: 304.32},
+    37: {Common: 98.22, Uncommon: 132.6, Rare: 176.8, Epic: 235.73, Legendary: 314.3},
+    38: {Common: 102.64, Uncommon: 138.56, Rare: 184.75, Epic: 246.34, Legendary: 328.45},
+    39: {Common: 107.14, Uncommon: 144.64, Rare: 192.85, Epic: 257.14, Legendary: 342.85},
+    40: {Common: 111.73, Uncommon: 150.84, Rare: 201.11, Epic: 268.15, Legendary: 357.54},
+    41: {Common: 116.4, Uncommon: 157.14, Rare: 209.52, Epic: 279.36, Legendary: 372.48},
+    42: {Common: 121.13, Uncommon: 163.53, Rare: 218.03, Epic: 290.71, Legendary: 387.62},
+    43: {Common: 124.41, Uncommon: 167.95, Rare: 223.94, Epic: 298.58, Legendary: 398.11},
+    44: {Common: 129.22, Uncommon: 174.45, Rare: 232.6, Epic: 310.13, Legendary: 413.5},
+    45: {Common: 134.14, Uncommon: 181.09, Rare: 241.45, Epic: 321.94, Legendary: 429.25},
+    46: {Common: 139.13, Uncommon: 187.83, Rare: 250.43, Epic: 333.91, Legendary: 445.22},
+    47: {Common: 144.21, Uncommon: 194.68, Rare: 259.58, Epic: 346.1, Legendary: 461.47},
+    48: {Common: 147.63, Uncommon: 199.3, Rare: 265.73, Epic: 354.31, Legendary: 472.42},
+    49: {Common: 152.82, Uncommon: 206.31, Rare: 275.08, Epic: 366.77, Legendary: 489.02},
+    50: {Common: 158.1, Uncommon: 213.44, Rare: 284.58, Epic: 379.44, Legendary: 505.92},
+    51: {Common: 163.45, Uncommon: 220.66, Rare: 294.21, Epic: 392.28, Legendary: 523.04},
+    52: {Common: 168.89, Uncommon: 228.0, Rare: 304.0, Epic: 405.34, Legendary: 540.45},
+    53: {Common: 172.46, Uncommon: 232.82, Rare: 310.43, Epic: 413.9, Legendary: 551.87},
+    54: {Common: 178.06, Uncommon: 240.38, Rare: 320.51, Epic: 427.34, Legendary: 569.79},
+    55: {Common: 183.96, Uncommon: 248.35, Rare: 331.13, Epic: 441.5, Legendary: 588.67},
+    56: {Common: 189.97, Uncommon: 256.46, Rare: 341.95, Epic: 455.93, Legendary: 607.9},
+    57: {Common: 196.05, Uncommon: 264.67, Rare: 352.89, Epic: 470.52, Legendary: 627.36},
+    58: {Common: 202.23, Uncommon: 273.01, Rare: 364.01, Epic: 485.35, Legendary: 647.14},
+    59: {Common: 208.48, Uncommon: 281.45, Rare: 375.26, Epic: 500.35, Legendary: 667.14},
+    60: {Common: 214.83, Uncommon: 290.02, Rare: 386.69, Epic: 515.59, Legendary: 687.46},
+    61: {Common: 221.25, Uncommon: 298.69, Rare: 398.25, Epic: 531.0, Legendary: 708.0},
+    62: {Common: 231.49, Uncommon: 312.51, Rare: 416.68, Epic: 555.58, Legendary: 740.77},
+    63: {Common: 238.32, Uncommon: 321.73, Rare: 428.98, Epic: 571.97, Legendary: 762.62},
+    64: {Common: 245.26, Uncommon: 331.1, Rare: 441.47, Epic: 588.62, Legendary: 784.83},
+    65: {Common: 252.27, Uncommon: 340.56, Rare: 454.09, Epic: 605.45, Legendary: 807.26},
+  },
+  hat: {
+    0: {Common: 7.71, Uncommon: 10.41, Rare: 13.88, Epic: 18.5, Legendary: 24.67},
+    1: {Common: 8.19, Uncommon: 11.06, Rare: 14.74, Epic: 19.66, Legendary: 26.21},
+    2: {Common: 8.68, Uncommon: 11.72, Rare: 15.62, Epic: 20.83, Legendary: 27.78},
+    3: {Common: 9.16, Uncommon: 12.37, Rare: 16.49, Epic: 21.98, Legendary: 29.31},
+    4: {Common: 9.64, Uncommon: 13.01, Rare: 17.35, Epic: 23.14, Legendary: 30.85},
+    5: {Common: 10.12, Uncommon: 13.66, Rare: 18.22, Epic: 24.29, Legendary: 32.38},
+    6: {Common: 10.8, Uncommon: 14.58, Rare: 19.44, Epic: 25.92, Legendary: 34.56},
+    7: {Common: 11.29, Uncommon: 15.24, Rare: 20.32, Epic: 27.1, Legendary: 36.13},
+    8: {Common: 11.78, Uncommon: 15.9, Rare: 21.2, Epic: 28.27, Legendary: 37.7},
+    9: {Common: 12.27, Uncommon: 16.56, Rare: 22.09, Epic: 29.45, Legendary: 39.26},
+    10: {Common: 12.76, Uncommon: 17.23, Rare: 22.97, Epic: 30.62, Legendary: 40.83},
+    11: {Common: 13.49, Uncommon: 18.21, Rare: 24.28, Epic: 32.38, Legendary: 43.17},
+    12: {Common: 13.99, Uncommon: 18.89, Rare: 25.18, Epic: 33.58, Legendary: 44.77},
+    13: {Common: 14.49, Uncommon: 19.56, Rare: 26.08, Epic: 34.78, Legendary: 46.37},
+    14: {Common: 14.99, Uncommon: 20.24, Rare: 26.98, Epic: 35.98, Legendary: 47.97},
+    15: {Common: 15.49, Uncommon: 20.91, Rare: 27.88, Epic: 37.18, Legendary: 49.57},
+    16: {Common: 15.99, Uncommon: 21.59, Rare: 28.78, Epic: 38.38, Legendary: 51.17},
+    17: {Common: 16.79, Uncommon: 22.67, Rare: 30.22, Epic: 40.3, Legendary: 53.73},
+    18: {Common: 17.3, Uncommon: 23.36, Rare: 31.14, Epic: 41.52, Legendary: 55.36},
+    19: {Common: 17.81, Uncommon: 24.04, Rare: 32.06, Epic: 42.74, Legendary: 56.99},
+    20: {Common: 18.31, Uncommon: 24.72, Rare: 32.96, Epic: 43.94, Legendary: 58.59},
+    21: {Common: 18.82, Uncommon: 25.41, Rare: 33.88, Epic: 45.17, Legendary: 60.22},
+    22: {Common: 19.67, Uncommon: 26.55, Rare: 35.41, Epic: 47.21, Legendary: 62.94},
+    23: {Common: 20.19, Uncommon: 27.26, Rare: 36.34, Epic: 48.46, Legendary: 64.61},
+    24: {Common: 24.31, Uncommon: 32.82, Rare: 43.76, Epic: 58.34, Legendary: 77.79},
+    25: {Common: 26.62, Uncommon: 35.94, Rare: 47.92, Epic: 63.89, Legendary: 85.18},
+    26: {Common: 28.99, Uncommon: 39.14, Rare: 52.18, Epic: 69.58, Legendary: 92.77},
+    27: {Common: 30.92, Uncommon: 41.74, Rare: 55.66, Epic: 74.21, Legendary: 98.94},
+    28: {Common: 33.38, Uncommon: 45.06, Rare: 60.08, Epic: 80.11, Legendary: 106.82},
+    29: {Common: 35.91, Uncommon: 48.48, Rare: 64.64, Epic: 86.18, Legendary: 114.91},
+    30: {Common: 37.9, Uncommon: 51.16, Rare: 68.22, Epic: 90.96, Legendary: 121.28},
+    31: {Common: 40.53, Uncommon: 54.72, Rare: 72.95, Epic: 97.27, Legendary: 129.7},
+    32: {Common: 43.21, Uncommon: 58.33, Rare: 77.78, Epic: 103.7, Legendary: 138.27},
+    33: {Common: 45.27, Uncommon: 61.11, Rare: 81.49, Epic: 108.65, Legendary: 144.86},
+    34: {Common: 48.05, Uncommon: 64.87, Rare: 86.49, Epic: 115.32, Legendary: 153.76},
+    35: {Common: 50.9, Uncommon: 68.72, Rare: 91.62, Epic: 122.16, Legendary: 162.88},
+    36: {Common: 53.01, Uncommon: 71.56, Rare: 95.42, Epic: 127.22, Legendary: 169.63},
+    37: {Common: 55.95, Uncommon: 75.53, Rare: 100.71, Epic: 134.28, Legendary: 179.04},
+    38: {Common: 58.96, Uncommon: 79.6, Rare: 106.13, Epic: 141.5, Legendary: 188.67},
+    39: {Common: 62.02, Uncommon: 83.73, Rare: 111.64, Epic: 148.85, Legendary: 198.46},
+    40: {Common: 64.24, Uncommon: 86.72, Rare: 115.63, Epic: 154.18, Legendary: 205.57},
+    41: {Common: 67.4, Uncommon: 90.99, Rare: 121.32, Epic: 161.76, Legendary: 215.68},
+    42: {Common: 70.62, Uncommon: 95.34, Rare: 127.12, Epic: 169.49, Legendary: 225.98},
+    43: {Common: 72.9, Uncommon: 98.42, Rare: 131.22, Epic: 174.96, Legendary: 233.28},
+    44: {Common: 77.22, Uncommon: 104.25, Rare: 139.0, Epic: 185.33, Legendary: 247.1},
+    45: {Common: 80.62, Uncommon: 108.84, Rare: 145.12, Epic: 193.49, Legendary: 257.98},
+    46: {Common: 85.11, Uncommon: 114.9, Rare: 153.2, Epic: 204.26, Legendary: 272.35},
+    47: {Common: 88.64, Uncommon: 119.66, Rare: 159.55, Epic: 212.74, Legendary: 283.65},
+    48: {Common: 93.3, Uncommon: 125.95, Rare: 167.94, Epic: 223.92, Legendary: 298.56},
+    49: {Common: 96.98, Uncommon: 130.92, Rare: 174.56, Epic: 232.75, Legendary: 310.34},
+    50: {Common: 100.52, Uncommon: 135.7, Rare: 180.94, Epic: 241.25, Legendary: 321.66},
+    51: {Common: 104.3, Uncommon: 140.81, Rare: 187.74, Epic: 250.32, Legendary: 333.76},
+    52: {Common: 109.25, Uncommon: 147.49, Rare: 196.65, Epic: 262.2, Legendary: 349.6},
+    53: {Common: 113.18, Uncommon: 152.79, Rare: 203.72, Epic: 271.63, Legendary: 362.18},
+    54: {Common: 118.29, Uncommon: 159.69, Rare: 212.92, Epic: 283.9, Legendary: 378.53},
+    55: {Common: 123.5, Uncommon: 166.73, Rare: 222.3, Epic: 296.4, Legendary: 395.2},
+    56: {Common: 128.8, Uncommon: 173.88, Rare: 231.84, Epic: 309.12, Legendary: 412.16},
+    57: {Common: 134.19, Uncommon: 181.16, Rare: 241.54, Epic: 322.06, Legendary: 429.41},
+    58: {Common: 139.67, Uncommon: 188.55, Rare: 251.41, Epic: 335.21, Legendary: 446.94},
+    59: {Common: 145.24, Uncommon: 196.07, Rare: 261.43, Epic: 348.58, Legendary: 464.77},
+    60: {Common: 150.9, Uncommon: 203.72, Rare: 271.62, Epic: 362.16, Legendary: 482.88},
+    61: {Common: 156.65, Uncommon: 211.48, Rare: 281.97, Epic: 375.96, Legendary: 501.28},
+    62: {Common: 162.49, Uncommon: 219.36, Rare: 292.48, Epic: 389.98, Legendary: 519.97},
+    63: {Common: 168.42, Uncommon: 227.37, Rare: 303.16, Epic: 404.21, Legendary: 538.94},
+    64: {Common: 174.45, Uncommon: 235.51, Rare: 314.01, Epic: 418.68, Legendary: 558.24},
+    65: {Common: 180.56, Uncommon: 243.76, Rare: 325.01, Epic: 433.34, Legendary: 577.79},
+  },
+  ring: {
+    0: {Common: 3.86, Uncommon: 5.21, Rare: 6.95, Epic: 9.26, Legendary: 12.35},
+    1: {Common: 4.09, Uncommon: 5.52, Rare: 7.36, Epic: 9.82, Legendary: 13.09},
+    2: {Common: 4.34, Uncommon: 5.86, Rare: 7.81, Epic: 10.42, Legendary: 13.89},
+    3: {Common: 4.59, Uncommon: 6.2, Rare: 8.26, Epic: 11.02, Legendary: 14.69},
+    4: {Common: 4.82, Uncommon: 6.51, Rare: 8.68, Epic: 11.57, Legendary: 15.42},
+    5: {Common: 5.05, Uncommon: 6.82, Rare: 9.09, Epic: 12.12, Legendary: 16.16},
+    6: {Common: 5.3, Uncommon: 7.16, Rare: 9.54, Epic: 12.72, Legendary: 16.96},
+    7: {Common: 5.55, Uncommon: 7.49, Rare: 9.99, Epic: 13.32, Legendary: 17.76},
+    8: {Common: 5.78, Uncommon: 7.8, Rare: 10.4, Epic: 13.87, Legendary: 18.5},
+    9: {Common: 6.01, Uncommon: 8.11, Rare: 10.82, Epic: 14.42, Legendary: 19.23},
+    10: {Common: 6.27, Uncommon: 8.46, Rare: 11.29, Epic: 15.05, Legendary: 20.06},
+    11: {Common: 6.52, Uncommon: 8.8, Rare: 11.74, Epic: 15.65, Legendary: 20.86},
+    12: {Common: 6.75, Uncommon: 9.11, Rare: 12.15, Epic: 16.2, Legendary: 21.6},
+    13: {Common: 6.98, Uncommon: 9.42, Rare: 12.56, Epic: 16.75, Legendary: 22.34},
+    14: {Common: 7.23, Uncommon: 9.76, Rare: 13.01, Epic: 17.35, Legendary: 23.14},
+    15: {Common: 7.48, Uncommon: 10.1, Rare: 13.46, Epic: 17.95, Legendary: 23.94},
+    16: {Common: 7.71, Uncommon: 10.41, Rare: 13.88, Epic: 18.5, Legendary: 24.67},
+    17: {Common: 7.94, Uncommon: 10.72, Rare: 14.29, Epic: 19.06, Legendary: 25.41},
+    18: {Common: 8.19, Uncommon: 11.06, Rare: 14.74, Epic: 19.66, Legendary: 26.21},
+    19: {Common: 8.44, Uncommon: 11.39, Rare: 15.19, Epic: 20.26, Legendary: 27.01},
+    20: {Common: 8.68, Uncommon: 11.72, Rare: 15.62, Epic: 20.83, Legendary: 27.78},
+    21: {Common: 8.91, Uncommon: 12.03, Rare: 16.04, Epic: 21.38, Legendary: 28.51},
+    22: {Common: 9.16, Uncommon: 12.37, Rare: 16.49, Epic: 21.98, Legendary: 29.31},
+    23: {Common: 9.41, Uncommon: 12.7, Rare: 16.94, Epic: 22.58, Legendary: 30.11},
+    24: {Common: 9.65, Uncommon: 13.03, Rare: 17.37, Epic: 23.16, Legendary: 30.88},
+    25: {Common: 10.32, Uncommon: 13.93, Rare: 18.58, Epic: 24.77, Legendary: 33.02},
+    26: {Common: 10.81, Uncommon: 14.59, Rare: 19.46, Epic: 25.94, Legendary: 34.59},
+    27: {Common: 11.3, Uncommon: 15.26, Rare: 20.34, Epic: 27.12, Legendary: 36.16},
+    28: {Common: 11.8, Uncommon: 15.93, Rare: 21.24, Epic: 28.32, Legendary: 37.76},
+    29: {Common: 12.29, Uncommon: 16.59, Rare: 22.12, Epic: 29.5, Legendary: 39.33},
+    30: {Common: 13.01, Uncommon: 17.56, Rare: 23.42, Epic: 31.22, Legendary: 41.63},
+    31: {Common: 13.51, Uncommon: 18.24, Rare: 24.32, Epic: 32.42, Legendary: 43.23},
+    32: {Common: 14.01, Uncommon: 18.91, Rare: 25.22, Epic: 33.62, Legendary: 44.83},
+    33: {Common: 14.51, Uncommon: 19.59, Rare: 26.12, Epic: 34.82, Legendary: 46.43},
+    34: {Common: 15.28, Uncommon: 20.63, Rare: 27.5, Epic: 36.67, Legendary: 48.9},
+    35: {Common: 15.79, Uncommon: 21.32, Rare: 28.42, Epic: 37.9, Legendary: 50.53},
+    36: {Common: 16.3, Uncommon: 22.01, Rare: 29.34, Epic: 39.12, Legendary: 52.16},
+    37: {Common: 16.81, Uncommon: 22.69, Rare: 30.26, Epic: 40.34, Legendary: 53.79},
+    38: {Common: 17.32, Uncommon: 23.38, Rare: 31.18, Epic: 41.57, Legendary: 55.42},
+    39: {Common: 18.14, Uncommon: 24.49, Rare: 32.65, Epic: 43.54, Legendary: 58.05},
+    40: {Common: 18.66, Uncommon: 25.19, Rare: 33.59, Epic: 44.78, Legendary: 59.71},
+    41: {Common: 19.18, Uncommon: 25.89, Rare: 34.52, Epic: 46.03, Legendary: 61.38},
+    42: {Common: 19.7, Uncommon: 26.6, Rare: 35.46, Epic: 47.28, Legendary: 63.04},
+    43: {Common: 20.22, Uncommon: 27.3, Rare: 36.4, Epic: 48.53, Legendary: 64.7},
+    44: {Common: 21.09, Uncommon: 28.47, Rare: 37.96, Epic: 50.62, Legendary: 67.49},
+    45: {Common: 21.62, Uncommon: 29.19, Rare: 38.92, Epic: 51.89, Legendary: 69.18},
+    46: {Common: 22.15, Uncommon: 29.9, Rare: 39.87, Epic: 53.16, Legendary: 70.88},
+    47: {Common: 22.68, Uncommon: 30.62, Rare: 40.82, Epic: 54.43, Legendary: 72.58},
+    48: {Common: 23.6, Uncommon: 31.86, Rare: 42.48, Epic: 56.64, Legendary: 75.52},
+    49: {Common: 24.14, Uncommon: 32.59, Rare: 43.45, Epic: 57.94, Legendary: 77.25},
+    50: {Common: 24.67, Uncommon: 33.3, Rare: 44.41, Epic: 59.21, Legendary: 78.94},
+    51: {Common: 25.21, Uncommon: 34.03, Rare: 45.38, Epic: 60.5, Legendary: 80.67},
+    52: {Common: 26.18, Uncommon: 35.34, Rare: 47.12, Epic: 62.83, Legendary: 83.78},
+    53: {Common: 26.72, Uncommon: 36.07, Rare: 48.1, Epic: 64.13, Legendary: 85.5},
+    54: {Common: 27.27, Uncommon: 36.81, Rare: 49.09, Epic: 65.45, Legendary: 87.26},
+    55: {Common: 27.81, Uncommon: 37.54, Rare: 50.06, Epic: 66.74, Legendary: 88.99},
+    56: {Common: 28.83, Uncommon: 38.92, Rare: 51.89, Epic: 69.19, Legendary: 92.26},
+    57: {Common: 29.38, Uncommon: 39.66, Rare: 52.88, Epic: 70.51, Legendary: 94.02},
+    58: {Common: 29.94, Uncommon: 40.42, Rare: 53.89, Epic: 71.86, Legendary: 95.81},
+    59: {Common: 30.99, Uncommon: 41.84, Rare: 55.78, Epic: 74.38, Legendary: 99.17},
+    60: {Common: 31.55, Uncommon: 42.59, Rare: 56.79, Epic: 75.72, Legendary: 100.96},
+    61: {Common: 32.12, Uncommon: 43.36, Rare: 57.82, Epic: 77.09, Legendary: 102.78},
+    62: {Common: 33.77, Uncommon: 45.59, Rare: 60.79, Epic: 81.05, Legendary: 108.06},
+    63: {Common: 34.35, Uncommon: 46.37, Rare: 61.83, Epic: 82.44, Legendary: 109.92},
+    64: {Common: 34.92, Uncommon: 47.14, Rare: 62.86, Epic: 83.81, Legendary: 111.74},
+    65: {Common: 36.05, Uncommon: 48.67, Rare: 64.89, Epic: 86.52, Legendary: 115.36},
+  },
+  necklace: {
+    0: {Common: 7.71, Uncommon: 10.41, Rare: 13.88, Epic: 18.5, Legendary: 24.67},
+    1: {Common: 8.19, Uncommon: 11.06, Rare: 14.74, Epic: 19.66, Legendary: 26.21},
+    2: {Common: 8.68, Uncommon: 11.72, Rare: 15.62, Epic: 20.83, Legendary: 27.78},
+    3: {Common: 9.16, Uncommon: 12.37, Rare: 16.49, Epic: 21.98, Legendary: 29.31},
+    4: {Common: 9.64, Uncommon: 13.01, Rare: 17.35, Epic: 23.14, Legendary: 30.85},
+    5: {Common: 10.12, Uncommon: 13.66, Rare: 18.22, Epic: 24.29, Legendary: 32.38},
+    6: {Common: 10.8, Uncommon: 14.58, Rare: 19.44, Epic: 25.92, Legendary: 34.56},
+    7: {Common: 11.29, Uncommon: 15.24, Rare: 20.32, Epic: 27.1, Legendary: 36.13},
+    8: {Common: 11.78, Uncommon: 15.9, Rare: 21.2, Epic: 28.27, Legendary: 37.7},
+    9: {Common: 12.27, Uncommon: 16.56, Rare: 22.09, Epic: 29.45, Legendary: 39.26},
+    10: {Common: 12.76, Uncommon: 17.23, Rare: 22.97, Epic: 30.62, Legendary: 40.83},
+    11: {Common: 13.49, Uncommon: 18.21, Rare: 24.28, Epic: 32.38, Legendary: 43.17},
+    12: {Common: 13.99, Uncommon: 18.89, Rare: 25.18, Epic: 33.58, Legendary: 44.77},
+    13: {Common: 14.49, Uncommon: 19.56, Rare: 26.08, Epic: 34.78, Legendary: 46.37},
+    14: {Common: 14.99, Uncommon: 20.24, Rare: 26.98, Epic: 35.98, Legendary: 47.97},
+    15: {Common: 15.49, Uncommon: 20.91, Rare: 27.88, Epic: 37.18, Legendary: 49.57},
+    16: {Common: 15.99, Uncommon: 21.59, Rare: 28.78, Epic: 38.38, Legendary: 51.17},
+    17: {Common: 16.79, Uncommon: 22.67, Rare: 30.22, Epic: 40.3, Legendary: 53.73},
+    18: {Common: 17.3, Uncommon: 23.36, Rare: 31.14, Epic: 41.52, Legendary: 55.36},
+    19: {Common: 17.81, Uncommon: 24.04, Rare: 32.06, Epic: 42.74, Legendary: 56.99},
+    20: {Common: 18.31, Uncommon: 24.72, Rare: 32.96, Epic: 43.94, Legendary: 58.59},
+    21: {Common: 18.82, Uncommon: 25.41, Rare: 33.88, Epic: 45.17, Legendary: 60.22},
+    22: {Common: 19.67, Uncommon: 26.55, Rare: 35.41, Epic: 47.21, Legendary: 62.94},
+    23: {Common: 20.19, Uncommon: 27.26, Rare: 36.34, Epic: 48.46, Legendary: 64.61},
+    24: {Common: 21.89, Uncommon: 29.55, Rare: 39.4, Epic: 52.54, Legendary: 70.05},
+    25: {Common: 23.47, Uncommon: 31.68, Rare: 42.25, Epic: 56.33, Legendary: 75.1},
+    26: {Common: 24.69, Uncommon: 33.33, Rare: 44.44, Epic: 59.26, Legendary: 79.01},
+    27: {Common: 26.34, Uncommon: 35.56, Rare: 47.41, Epic: 63.22, Legendary: 84.29},
+    28: {Common: 27.56, Uncommon: 37.21, Rare: 49.61, Epic: 66.14, Legendary: 88.19},
+    29: {Common: 28.78, Uncommon: 38.85, Rare: 51.8, Epic: 69.07, Legendary: 92.1},
+    30: {Common: 30.51, Uncommon: 41.19, Rare: 54.92, Epic: 73.22, Legendary: 97.63},
+    31: {Common: 31.76, Uncommon: 42.88, Rare: 57.17, Epic: 76.22, Legendary: 101.63},
+    32: {Common: 33.55, Uncommon: 45.29, Rare: 60.39, Epic: 80.52, Legendary: 107.36},
+    33: {Common: 34.81, Uncommon: 46.99, Rare: 62.66, Epic: 83.54, Legendary: 111.39},
+    34: {Common: 36.67, Uncommon: 49.5, Rare: 66.01, Epic: 88.01, Legendary: 117.34},
+    35: {Common: 37.95, Uncommon: 51.23, Rare: 68.31, Epic: 91.08, Legendary: 121.44},
+    36: {Common: 39.23, Uncommon: 52.96, Rare: 70.61, Epic: 94.15, Legendary: 125.54},
+    37: {Common: 41.16, Uncommon: 55.57, Rare: 74.09, Epic: 98.78, Legendary: 131.71},
+    38: {Common: 42.47, Uncommon: 57.33, Rare: 76.45, Epic: 101.93, Legendary: 135.9},
+    39: {Common: 44.48, Uncommon: 60.05, Rare: 80.06, Epic: 106.75, Legendary: 142.34},
+    40: {Common: 45.78, Uncommon: 61.8, Rare: 82.4, Epic: 109.87, Legendary: 146.5},
+    41: {Common: 47.11, Uncommon: 63.6, Rare: 84.8, Epic: 113.06, Legendary: 150.75},
+    42: {Common: 49.19, Uncommon: 66.41, Rare: 88.54, Epic: 118.06, Legendary: 157.41},
+    43: {Common: 50.52, Uncommon: 68.2, Rare: 90.94, Epic: 121.25, Legendary: 161.66},
+    44: {Common: 52.65, Uncommon: 71.08, Rare: 94.77, Epic: 126.36, Legendary: 168.48},
+    45: {Common: 53.99, Uncommon: 72.89, Rare: 97.18, Epic: 129.58, Legendary: 172.77},
+    46: {Common: 56.16, Uncommon: 75.82, Rare: 101.09, Epic: 134.78, Legendary: 179.71},
+    47: {Common: 57.55, Uncommon: 77.69, Rare: 103.59, Epic: 138.12, Legendary: 184.16},
+    48: {Common: 58.92, Uncommon: 79.54, Rare: 106.06, Epic: 141.41, Legendary: 188.54},
+    49: {Common: 61.19, Uncommon: 82.61, Rare: 110.14, Epic: 146.86, Legendary: 195.81},
+    50: {Common: 62.57, Uncommon: 84.47, Rare: 112.63, Epic: 150.17, Legendary: 200.22},
+    51: {Common: 64.89, Uncommon: 87.6, Rare: 116.8, Epic: 155.74, Legendary: 207.65},
+    52: {Common: 66.31, Uncommon: 89.52, Rare: 119.36, Epic: 159.14, Legendary: 212.19},
+    53: {Common: 67.72, Uncommon: 91.42, Rare: 121.9, Epic: 162.53, Legendary: 216.7},
+    54: {Common: 70.13, Uncommon: 94.68, Rare: 126.23, Epic: 168.31, Legendary: 224.42},
+    55: {Common: 71.7, Uncommon: 96.8, Rare: 129.06, Epic: 172.08, Legendary: 229.44},
+    56: {Common: 74.28, Uncommon: 100.28, Rare: 133.7, Epic: 178.27, Legendary: 237.7},
+    57: {Common: 75.86, Uncommon: 102.41, Rare: 136.55, Epic: 182.06, Legendary: 242.75},
+    58: {Common: 78.5, Uncommon: 105.98, Rare: 141.3, Epic: 188.4, Legendary: 251.2},
+    59: {Common: 80.12, Uncommon: 108.16, Rare: 144.22, Epic: 192.29, Legendary: 256.38},
+    60: {Common: 82.81, Uncommon: 111.79, Rare: 149.06, Epic: 198.74, Legendary: 264.99},
+    61: {Common: 84.45, Uncommon: 114.01, Rare: 152.01, Epic: 202.68, Legendary: 270.24},
+    62: {Common: 88.66, Uncommon: 119.69, Rare: 159.59, Epic: 212.78, Legendary: 283.71},
+    63: {Common: 90.37, Uncommon: 122.0, Rare: 162.67, Epic: 216.89, Legendary: 289.18},
+    64: {Common: 93.34, Uncommon: 126.01, Rare: 168.01, Epic: 224.02, Legendary: 298.69},
+    65: {Common: 95.07, Uncommon: 128.34, Rare: 171.13, Epic: 228.17, Legendary: 304.22},
+  },
+  waist: {
+    0: {Common: 16.28, Uncommon: 21.98, Rare: 29.3, Epic: 39.07, Legendary: 52.1},
+    1: {Common: 17.6, Uncommon: 23.76, Rare: 31.68, Epic: 42.24, Legendary: 56.32},
+    2: {Common: 18.64, Uncommon: 25.16, Rare: 33.55, Epic: 44.74, Legendary: 59.65},
+    3: {Common: 19.67, Uncommon: 26.55, Rare: 35.41, Epic: 47.21, Legendary: 62.94},
+    4: {Common: 21.06, Uncommon: 28.43, Rare: 37.91, Epic: 50.54, Legendary: 67.39},
+    5: {Common: 22.12, Uncommon: 29.86, Rare: 39.82, Epic: 53.09, Legendary: 70.78},
+    6: {Common: 23.17, Uncommon: 31.28, Rare: 41.71, Epic: 55.61, Legendary: 74.14},
+    7: {Common: 24.63, Uncommon: 33.25, Rare: 44.33, Epic: 59.11, Legendary: 78.82},
+    8: {Common: 25.7, Uncommon: 34.7, Rare: 46.26, Epic: 61.68, Legendary: 82.24},
+    9: {Common: 26.77, Uncommon: 36.14, Rare: 48.19, Epic: 64.25, Legendary: 85.66},
+    10: {Common: 28.31, Uncommon: 38.22, Rare: 50.96, Epic: 67.94, Legendary: 90.59},
+    11: {Common: 29.4, Uncommon: 39.69, Rare: 52.92, Epic: 70.56, Legendary: 94.08},
+    12: {Common: 30.49, Uncommon: 41.16, Rare: 54.88, Epic: 73.18, Legendary: 97.57},
+    13: {Common: 32.09, Uncommon: 43.32, Rare: 57.76, Epic: 77.02, Legendary: 102.69},
+    14: {Common: 33.2, Uncommon: 44.82, Rare: 59.76, Epic: 79.68, Legendary: 106.24},
+    15: {Common: 34.31, Uncommon: 46.32, Rare: 61.76, Epic: 82.34, Legendary: 109.79},
+    16: {Common: 35.99, Uncommon: 48.59, Rare: 64.78, Epic: 86.38, Legendary: 115.17},
+    17: {Common: 37.11, Uncommon: 50.1, Rare: 66.8, Epic: 89.06, Legendary: 118.75},
+    18: {Common: 38.84, Uncommon: 52.43, Rare: 69.91, Epic: 93.22, Legendary: 124.29},
+    19: {Common: 39.98, Uncommon: 53.97, Rare: 71.96, Epic: 95.95, Legendary: 127.94},
+    20: {Common: 41.13, Uncommon: 55.53, Rare: 74.03, Epic: 98.71, Legendary: 131.62},
+    21: {Common: 42.93, Uncommon: 57.96, Rare: 77.27, Epic: 103.03, Legendary: 137.38},
+    22: {Common: 44.09, Uncommon: 59.52, Rare: 79.36, Epic: 105.82, Legendary: 141.09},
+    23: {Common: 45.25, Uncommon: 61.09, Rare: 81.45, Epic: 108.6, Legendary: 144.8},
+    24: {Common: 50.33, Uncommon: 67.95, Rare: 90.59, Epic: 120.79, Legendary: 161.06},
+    25: {Common: 53.03, Uncommon: 71.59, Rare: 95.45, Epic: 127.27, Legendary: 169.7},
+    26: {Common: 56.56, Uncommon: 76.36, Rare: 101.81, Epic: 135.74, Legendary: 180.99},
+    27: {Common: 60.18, Uncommon: 81.24, Rare: 108.32, Epic: 144.43, Legendary: 192.58},
+    28: {Common: 63.87, Uncommon: 86.22, Rare: 114.97, Epic: 153.29, Legendary: 204.38},
+    29: {Common: 67.65, Uncommon: 91.33, Rare: 121.77, Epic: 162.36, Legendary: 216.48},
+    30: {Common: 71.51, Uncommon: 96.54, Rare: 128.72, Epic: 171.62, Legendary: 228.83},
+    31: {Common: 74.41, Uncommon: 100.45, Rare: 133.94, Epic: 178.58, Legendary: 238.11},
+    32: {Common: 78.39, Uncommon: 105.83, Rare: 141.1, Epic: 188.14, Legendary: 250.85},
+    33: {Common: 82.46, Uncommon: 111.32, Rare: 148.43, Epic: 197.9, Legendary: 263.87},
+    34: {Common: 86.59, Uncommon: 116.9, Rare: 155.86, Epic: 207.82, Legendary: 277.09},
+    35: {Common: 90.81, Uncommon: 122.59, Rare: 163.46, Epic: 217.94, Legendary: 290.59},
+    36: {Common: 95.1, Uncommon: 128.38, Rare: 171.18, Epic: 228.24, Legendary: 304.32},
+    37: {Common: 98.22, Uncommon: 132.6, Rare: 176.8, Epic: 235.73, Legendary: 314.3},
+    38: {Common: 102.64, Uncommon: 138.56, Rare: 184.75, Epic: 246.34, Legendary: 328.45},
+    39: {Common: 107.14, Uncommon: 144.64, Rare: 192.85, Epic: 257.14, Legendary: 342.85},
+    40: {Common: 111.73, Uncommon: 150.84, Rare: 201.11, Epic: 268.15, Legendary: 357.54},
+    41: {Common: 116.4, Uncommon: 157.14, Rare: 209.52, Epic: 279.36, Legendary: 372.48},
+    42: {Common: 121.13, Uncommon: 163.53, Rare: 218.03, Epic: 290.71, Legendary: 387.62},
+    43: {Common: 124.41, Uncommon: 167.95, Rare: 223.94, Epic: 298.58, Legendary: 398.11},
+    44: {Common: 129.22, Uncommon: 174.45, Rare: 232.6, Epic: 310.13, Legendary: 413.5},
+    45: {Common: 134.14, Uncommon: 181.09, Rare: 241.45, Epic: 321.94, Legendary: 429.25},
+    46: {Common: 139.13, Uncommon: 187.83, Rare: 250.43, Epic: 333.91, Legendary: 445.22},
+    47: {Common: 144.21, Uncommon: 194.68, Rare: 259.58, Epic: 346.1, Legendary: 461.47},
+    48: {Common: 147.63, Uncommon: 199.3, Rare: 265.73, Epic: 354.31, Legendary: 472.42},
+    49: {Common: 152.82, Uncommon: 206.31, Rare: 275.08, Epic: 366.77, Legendary: 489.02},
+    50: {Common: 158.1, Uncommon: 213.44, Rare: 284.58, Epic: 379.44, Legendary: 505.92},
+    51: {Common: 163.45, Uncommon: 220.66, Rare: 294.21, Epic: 392.28, Legendary: 523.04},
+    52: {Common: 168.89, Uncommon: 228.0, Rare: 304.0, Epic: 405.34, Legendary: 540.45},
+    53: {Common: 172.46, Uncommon: 232.82, Rare: 310.43, Epic: 413.9, Legendary: 551.87},
+    54: {Common: 178.06, Uncommon: 240.38, Rare: 320.51, Epic: 427.34, Legendary: 569.79},
+    55: {Common: 183.96, Uncommon: 248.35, Rare: 331.13, Epic: 441.5, Legendary: 588.67},
+    56: {Common: 189.97, Uncommon: 256.46, Rare: 341.95, Epic: 455.93, Legendary: 607.9},
+    57: {Common: 196.05, Uncommon: 264.67, Rare: 352.89, Epic: 470.52, Legendary: 627.36},
+    58: {Common: 202.23, Uncommon: 273.01, Rare: 364.01, Epic: 485.35, Legendary: 647.14},
+    59: {Common: 208.48, Uncommon: 281.45, Rare: 375.26, Epic: 500.35, Legendary: 667.14},
+    60: {Common: 214.83, Uncommon: 290.02, Rare: 386.69, Epic: 515.59, Legendary: 687.46},
+    61: {Common: 221.25, Uncommon: 298.69, Rare: 398.25, Epic: 531.0, Legendary: 708.0},
+    62: {Common: 231.49, Uncommon: 312.51, Rare: 416.68, Epic: 555.58, Legendary: 740.77},
+    63: {Common: 238.32, Uncommon: 321.73, Rare: 428.98, Epic: 571.97, Legendary: 762.62},
+    64: {Common: 245.26, Uncommon: 331.1, Rare: 441.47, Epic: 588.62, Legendary: 784.83},
+    65: {Common: 252.27, Uncommon: 340.56, Rare: 454.09, Epic: 605.45, Legendary: 807.26},
+  },
+};
+
+// Build item pool: 66 items per slot, score từ CSV_SCORES
+// chapter(i) = floor(i × 24 / 66) + 1
+function buildPool(slotId) {
+  const mats = MATERIALS[slotId];
+  const poolSize = mats.length; // 66
+  const scores = CSV_SCORES[slotId];
+  const chStart = {};
+  for (let i = 0; i < poolSize; i++) {
+    const ch = Math.floor(i * 24 / poolSize) + 1;
+    if (chStart[ch] === undefined) chStart[ch] = i;
+  }
+  return Array.from({length: poolSize}, (_, i) => {
+    const ch = Math.floor(i * 24 / poolSize) + 1;
+    const sc = scores[i] || {};
+    return {
+      idx:       i,
+      id:        `${slotId}_${String(i).padStart(2,'0')}`,
+      name:      mats[i],
+      chapter:   ch,
+      baseScore: sc['Common'] || 0,
+      scoresMap: sc,
+    };
+  });
+}
+
+const ITEM_POOLS = {};
+SLOTS.forEach(sl => { ITEM_POOLS[sl.id] = buildPool(sl.id); });
+
+// chapter → item list lookup
+const CH_ITEMS = {};
+SLOTS.forEach(sl => {
+  CH_ITEMS[sl.id] = {};
+  for (let ch = 1; ch <= 24; ch++)
+    CH_ITEMS[sl.id][ch] = ITEM_POOLS[sl.id].filter(it => it.chapter === ch);
+});
+
+function pickItem(slotId, ch) {
+  let pool = CH_ITEMS[slotId][ch];
+  if (!pool || !pool.length) {
+    // fallback: nearest lower chapter
+    for (let c = ch-1; c >= 1; c--) {
+      pool = CH_ITEMS[slotId][c];
+      if (pool && pool.length) break;
+    }
+  }
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// Default rarity probabilities per chapter group [C,U,R,E,L]
+// Group 0 → Ch1–2  : không có Rare
+// Group 1 → Ch3–5  : Rare bắt đầu (Ch3 trở đi)
+// Group 2 → Ch6–8  : Rare phổ biến hơn
+// Group 3 → Ch9–11 : Legendary bắt đầu
+// Groups 4–7: tăng dần Epic/Legendary
+// Common tối đa Ch5, Ch6+ = 0% Common
+const DEFAULT_PROB = [
+  [80,20, 0, 0, 0], // Ch 1-2  : Common 80% / Uncommon 20%
+  [45,38,17, 0, 0], // Ch 3-5  : Common giảm, Rare bắt đầu 17%
+  [ 0,40,40,18, 2], // Ch 6-8  : Common = 0%, Rare ngang Uncommon
+  [ 0,22,42,27, 9], // Ch 9-11 : Rare dominant, Legendary 9%
+  [ 0,10,38,35,17], // Ch12-14
+  [ 0, 4,32,40,24], // Ch15-17
+  [ 0, 1,24,44,31], // Ch18-21
+  [ 0, 0,18,45,37], // Ch22-24
+];
+
+// Prob group index for a chapter (0–7)
+// Group 0 = Ch1-2 (no Rare), Group 1 = Ch3-5 (Rare starts), Groups 2-7 = Ch6-24
+function probGroup(ch) {
+  if (ch <= 2) return 0;
+  return Math.min(1 + Math.floor((ch - 3) / 3), 7);
+}
+
+// Item score from item object
+function calcScore(item, rarity) { return item.scoresMap ? (item.scoresMap[rarity] || 0) : item.baseScore * SCORE_MULT[rarity]; }
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+let state = {
+  chapter: 1,
+  bossIdx: 0,       // 0-indexed boss within chapter
+  gear: {},         // slotId → {name, rarity, score, chapter}
+  pityCount: 0,     // consecutive bosses without upgrade
+  log: [],
+  stats: { total:0, upgrades:0, byRarity:{Common:0,Uncommon:0,Rare:0,Epic:0,Legendary:0} },
+  customProb: null, // override probabilities
+};
+
+function wavesInChapter(ch) { return ch <= 5 ? 30 + (ch-1)*15 : 90; }
+function totalBosses(ch) { return wavesInChapter(ch) / 5; }
+function isFinalBoss(ch, idx) { return idx === totalBosses(ch)-1; }
+
+// ═══════════════════════════════════════════════════════
+//  SIMULATION CORE
+// ═══════════════════════════════════════════════════════
+// Final boss guaranteed minimum per chapter group:
+// Ch 1-3 → min Uncommon | Ch 4-9 → min Uncommon (Rare possible)
+// Ch 10-15 → min Rare   | Ch 16-24 → min Rare (Epic/Leg boosted)
+const FINAL_BOSS_MIN = [1,1,1,2,2,2,2,2]; // index into RARITIES (0=C,1=U,2=R,3=E,4=L)
+
+function rollRarity(ch, isFinal) {
+  const probs = state.customProb ? state.customProb[probGroup(ch)] : DEFAULT_PROB[probGroup(ch)];
+  let p = [...probs];
+
+  if (isFinal) {
+    const minIdx = FINAL_BOSS_MIN[probGroup(ch)];
+    // Redistribute all probability below minIdx into minIdx
+    let pooled = 0;
+    for (let i = 0; i < minIdx; i++) { pooled += p[i]; p[i] = 0; }
+    p[minIdx] += pooled;
+    // Extra boost: add 15% weight to minIdx and above, normalized
+    // (makes final boss feel meaningfully different)
+    const s = p.reduce((a,b)=>a+b,0);
+    p = p.map(x => x/s*100);
+  }
+
+  const r = Math.random()*100;
+  let acc = 0;
+  for (let i=0; i<5; i++) {
+    acc += p[i];
+    if (r < acc) return RARITIES[i];
+  }
+  return RARITIES[4];
+}
+
+function rollSlot() {
+  // Ưu tiên slot trống → đảm bảo full 8 trang bị trong 2 chapter đầu
+  const emptySlots = SLOTS.filter(sl => !state.gear[sl.id]);
+  const pool = emptySlots.length > 0 ? emptySlots : SLOTS;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function doBoss() {
+  const ch = state.chapter;
+  const bosses = totalBosses(ch);
+  if (state.bossIdx >= bosses) return;
+
+  const isFinal = isFinalBoss(ch, state.bossIdx);
+  const slot = rollSlot();
+  let rarity = rollRarity(ch, isFinal);
+
+  // Pity system: 5 consecutive no-upgrades → guaranteed Rare+
+  if (state.pityCount >= 5 && RARITIES.indexOf(rarity) < 2) {
+    rarity = 'Rare';
+  }
+
+  const item  = pickItem(slot.id, ch);
+  const score = calcScore(item, rarity);
+  const current = state.gear[slot.id];
+  const isUpgrade = !current || score > current.score;
+  const isNew = !current;
+
+  if (isUpgrade) {
+    state.gear[slot.id] = { name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, chapter: ch };
+    state.pityCount = 0;
+  } else {
+    state.pityCount++;
+  }
+
+  state.bossIdx++;
+  state.stats.total++;
+  state.stats.byRarity[rarity]++;
+  if (isUpgrade) state.stats.upgrades++;
+
+  const entry = {
+    ch, boss: state.bossIdx, isFinal,
+    slot, name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score,
+    isUpgrade, isNew,
+    prevScore: current ? current.score : null,
+  };
+  state.log.unshift(entry);
+  if (state.log.length > 200) state.log.pop();
+
+  if (state.bossIdx >= bosses) {
+    // Chapter done
+  }
+
+  render();
+}
+
+function runAll() {
+  const ch = state.chapter;
+  const bosses = totalBosses(ch);
+  while (state.bossIdx < bosses) doBoss();
+  render();
+}
+
+function bulkSim() {
+  const n = parseInt(document.getElementById('simCount').value) || 100;
+  for (let i=0; i<n; i++) {
+    if (state.bossIdx >= totalBosses(state.chapter)) {
+      // advance chapter
+      if (state.chapter < 24) { state.chapter++; state.bossIdx = 0; }
+      else break;
+    }
+    doBoss();
+  }
+  render();
+}
+
+function resetChapter() {
+  state.bossIdx = 0;
+  state.pityCount = 0;
+  render();
+}
+
+function resetAll() {
+  const startWeapon = ITEM_POOLS['weapon'][0]; // Nerf Ball Gun I
+  state = {
+    chapter:1, bossIdx:0,
+    gear: {
+      weapon: {
+        name: startWeapon.name,
+        itemId: startWeapon.id,
+        itemIdx: startWeapon.idx,
+        rarity: 'Common',
+        score: startWeapon.baseScore * SCORE_MULT['Common'],
+        chapter: 1,
+      }
+    },
+    pityCount:0, log:[],
+    stats:{total:0,upgrades:0,byRarity:{Common:0,Uncommon:0,Rare:0,Epic:0,Legendary:0}},
+    customProb: state.customProb,
+  };
+  render();
+}
+
+function chChange(d) {
+  state.chapter = Math.max(1, Math.min(24, state.chapter+d));
+  state.bossIdx = 0; state.pityCount = 0;
+  document.getElementById('chSlider').value = state.chapter;
+  render();
+}
+function chSet(v) {
+  state.chapter = parseInt(v);
+  state.bossIdx = 0; state.pityCount = 0;
+  render();
+}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════
+function fmt(n) {
+  if (n >= 1e6) return (n/1e6).toFixed(2)+'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return n.toFixed(0);
+}
+
+function rarityBadge(r) {
+  return `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:${RARITY_COLOR[r]}22;color:${RARITY_COLOR[r]};border:1px solid ${RARITY_COLOR[r]}44">${r}</span>`;
+}
+
+function render() {
+  const ch = state.chapter;
+  const bosses = totalBosses(ch);
+
+  document.getElementById('chVal').textContent = ch;
+  document.getElementById('chSlider').value = ch;
+
+  // Chapter info
+  const waves = wavesInChapter(ch);
+  // Items available in this chapter for first slot (weapon) as sample
+  const sampleItems = CH_ITEMS['weapon'][ch] || [];
+  const scoreRange = sampleItems.length
+    ? `${fmt(sampleItems[0].scoresMap?.Common || sampleItems[0].baseScore)}–${fmt(sampleItems[sampleItems.length-1].scoresMap?.Legendary || sampleItems[sampleItems.length-1].baseScore * 3.20)}`
+    : '–'; // Common min → Legendary max
+  document.getElementById('chInfo').innerHTML = `
+    <div class="ch-stat"><span>Waves:</span><span>${waves}</span></div>
+    <div class="ch-stat"><span>Boss:</span><span>${bosses} (mỗi 5 wave)</span></div>
+    <div class="ch-stat"><span>Items/slot ch.này:</span><span>${sampleItems.length}</span></div>
+    <div class="ch-stat"><span>Score range (C→L):</span><span>${scoreRange}</span></div>
+    <div class="ch-stat"><span>Boss hiện tại:</span><span>${state.bossIdx}/${bosses}</span></div>
+    <div class="ch-stat"><span>Slot đã có gear:</span><span style="color:${Object.keys(state.gear).length===8?'#34d399':'#f59e0b'}">${Object.keys(state.gear).length}/8 ${Object.keys(state.gear).length===8?'✓ Full':'⚡ Ưu tiên trống'}</span></div>
+  `;
+
+  // Wave visual
+  const wv = document.getElementById('waveVis');
+  wv.innerHTML = '';
+  for (let i=1; i<=bosses; i++) {
+    const d = document.createElement('div');
+    const isFinal = i===bosses;
+    const isDone = i <= state.bossIdx;
+    const isCurrent = i === state.bossIdx+1;
+    d.className = `wave-dot ${isFinal?'wave-boss-final':'wave-boss'} ${isDone?'wave-done':''} ${isCurrent?'wave-current':''}`;
+    d.textContent = isFinal ? '★' : '■';
+    d.title = `Boss wave ${i*5}`;
+    wv.appendChild(d);
+  }
+
+  // Pity
+  const pct = Math.min(state.pityCount/5*100,100);
+  document.getElementById('pityFill').style.width = pct+'%';
+  document.getElementById('pityTxt').textContent = state.pityCount >= 5 ? '⚡ PITY!' : `${state.pityCount}/5`;
+
+  // Boss button
+  const done = state.bossIdx >= bosses;
+  const btn = document.getElementById('bossBtn');
+  btn.className = 'boss-btn' + (done?' disabled':'');
+  btn.disabled = done;
+  if (!done) {
+    const nextIsFinal = isFinalBoss(ch, state.bossIdx);
+    btn.textContent = nextIsFinal ? '★ BOSS CUỐI CHAPTER' : `⚔️ BOSS #${state.bossIdx+1} (Wave ${(state.bossIdx+1)*5})`;
+  } else {
+    btn.textContent = '✓ Chapter hoàn thành';
+  }
+
+  // Gear grid
+  const gg = document.getElementById('gearGrid');
+  gg.innerHTML = '';
+  SLOTS.forEach(sl => {
+    const g = state.gear[sl.id];
+    const div = document.createElement('div');
+    div.className = `gear-slot ${g ? RARITY_BG[g.rarity] : 'bg-common'}`;
+    div.style.border = g ? '' : '1px solid #2a2a44';
+    if (g) {
+      div.innerHTML = `
+        <div class="gear-slot-name">${sl.icon} ${sl.vi}</div>
+        ${rarityBadge(g.rarity)}
+        <div class="gear-item-name" style="color:${RARITY_COLOR[g.rarity]}">${g.name}</div>
+        <div class="gear-score">${fmt(g.score)} pts · Ch${g.chapter}</div>
+      `;
+    } else {
+      div.innerHTML = `<div class="gear-slot-name">${sl.icon} ${sl.vi}</div><div class="gear-empty">Chưa có trang bị</div>`;
+    }
+    gg.appendChild(div);
+  });
+
+  // Drop log
+  const dl = document.getElementById('dropList');
+  dl.innerHTML = '';
+  document.getElementById('logCount').textContent = `${state.log.length} drops`;
+  state.log.slice(0,50).forEach((e,idx) => {
+    const div = document.createElement('div');
+    div.className = `drop-card ${RARITY_BG[e.rarity]} ${idx===0?'new-drop':''}`;
+    const badge = e.isNew
+      ? `<span class="drop-badge badge-new">Mới</span>`
+      : e.isUpgrade
+        ? `<span class="drop-badge badge-upgrade">↑ Upgrade</span>`
+        : `<span class="drop-badge badge-sell">Bán</span>`;
+    const prevTxt = e.prevScore ? ` <span style="color:#6b7280">(cũ: ${fmt(e.prevScore)})</span>` : '';
+    div.innerHTML = `
+      <div style="font-size:16px">${e.slot.icon}</div>
+      <div class="drop-card-info">
+        <div class="drop-card-name" style="color:${RARITY_COLOR[e.rarity]}">${e.name} ${rarityBadge(e.rarity)}</div>
+        <div class="drop-card-sub">${e.slot.vi} · #${String(e.itemIdx+1).padStart(2,'0')} · Ch${e.ch} Boss#${e.boss}${e.isFinal?' ★':''}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="drop-card-score" style="color:${RARITY_COLOR[e.rarity]}">${fmt(e.score)}</div>
+        ${prevTxt}
+        <div style="margin-top:3px">${badge}</div>
+      </div>
+    `;
+    dl.appendChild(div);
+  });
+
+  // Stats
+  renderStats();
+  renderItemDB();
+}
+
+function renderStats() {
+  const s = state.stats;
+  const total = s.total;
+  const upPct = total ? (s.upgrades/total*100).toFixed(1) : '0.0';
+  const gear = Object.values(state.gear);
+  const gearSlots = gear.length;
+  let html = `
+    <div class="stat-row"><span>Tổng drops</span><span class="stat-val">${total}</span></div>
+    <div class="stat-row"><span>Upgrade rate</span><span class="stat-val">${upPct}%</span></div>
+    <div class="stat-row"><span>Slots có gear</span><span class="stat-val">${gearSlots}/8</span></div>
+    <div class="stat-row"><span>Pity hiện tại</span><span class="stat-val">${state.pityCount}/5</span></div>
+    <div class="section-label" style="margin-top:10px">Rarity distribution</div>
+  `;
+  const segs = RARITIES.map(r => {
+    const pct = total ? s.byRarity[r]/total*100 : 0;
+    return `<div class="rarity-seg" style="width:${pct}%;background:${RARITY_COLOR[r]};min-width:${pct>0?'6px':'0'}" title="${r}: ${pct.toFixed(1)}%">${pct>=8?Math.round(pct)+'%':''}</div>`;
+  }).join('');
+  html += `<div class="rarity-bar">${segs}</div>`;
+  RARITIES.forEach(r => {
+    const n = s.byRarity[r];
+    const pct = total ? (n/total*100).toFixed(1) : '0.0';
+    html += `<div class="stat-row"><span style="color:${RARITY_COLOR[r]}">${r}</span><span class="stat-val">${n} (${pct}%)</span></div>`;
+  });
+  document.getElementById('statsContent').innerHTML = html;
+}
+
+function renderItemDB() {
+  const filter = document.getElementById('slotFilter').value;
+  let html = '';
+  const slotsToShow = filter === 'all' ? SLOTS : SLOTS.filter(sl => sl.id === filter);
+  slotsToShow.forEach(sl => {
+    html += `<div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin:8px 0 4px">${sl.icon} ${sl.vi} (66 items)</div>`;
+    let lastCh = 0;
+    ITEM_POOLS[sl.id].forEach(item => {
+      if (item.chapter !== lastCh) {
+        html += `<div style="font-size:10px;color:#4b5563;margin:4px 0 2px;padding-left:2px">Chapter ${item.chapter}</div>`;
+        lastCh = item.chapter;
+      }
+      const equipped = state.gear[sl.id] && state.gear[sl.id].itemId === item.id;
+      html += `<div style="display:flex;justify-content:space-between;padding:2px 6px;border-radius:4px;background:${equipped?'#1e3a5f':'#1e1e36'};margin-bottom:1px;font-size:11px;${equipped?'border:1px solid #60a5fa':''}">
+        <span><span style="color:#4b5563;font-size:10px">#${String(item.idx+1).padStart(2,'0')}</span> ${item.name}</span>
+        <span style="color:#a78bfa">${fmt(item.scoresMap?.Common || item.baseScore)}</span>
+      </div>`;
+    });
+  });
+  document.getElementById('itemDB').innerHTML = html;
+}
+
+// Prob editor
+function buildProbEditor() {
+  const probs = state.customProb || DEFAULT_PROB;
+  const groups = ['Ch 1–2 (Common 80%)','Ch 3–5 (Common cuối, Rare 17%)','Ch 6–8 (Common = 0%)','Ch 9–11 (Leg bắt đầu)','Ch12–14','Ch15–17','Ch18–21','Ch22–24'];
+  let html = '';
+  groups.forEach((g,gi) => {
+    html += `<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:#a78bfa;margin-bottom:4px">${g}</div>`;
+    html += `<div class="prob-editor">`;
+    RARITIES.forEach((r,ri) => {
+      html += `<div class="prob-field">
+        <label style="color:${RARITY_COLOR[r]}">${r}</label>
+        <input type="number" id="prob_${gi}_${ri}" value="${probs[gi][ri]}" min="0" max="100" step="1">
+      </div>`;
+    });
+    html += `</div></div>`;
+  });
+  document.getElementById('probEditor').innerHTML = html;
+}
+
+function applyProb() {
+  const p = [];
+  for (let gi=0; gi<8; gi++) {
+    const row = [];
+    let sum = 0;
+    for (let ri=0; ri<5; ri++) {
+      const v = parseFloat(document.getElementById(`prob_${gi}_${ri}`).value)||0;
+      row.push(v); sum+=v;
+    }
+    if (Math.abs(sum-100) > 0.5) {
+      document.getElementById('probErr').textContent = `Nhóm ${gi+1}: tổng = ${sum} ≠ 100`;
+      return;
+    }
+    p.push(row);
+  }
+  state.customProb = p;
+  document.getElementById('probErr').textContent = '✓ Đã áp dụng';
+}
+
+function resetProb() {
+  state.customProb = null;
+  buildProbEditor();
+  document.getElementById('probErr').textContent = '';
+}
+
+function clearLog() {
+  state.log = [];
+  render();
+}
+
+function renderRarityList() {
+  const slotF  = document.getElementById('raritySlotFilter').value;
+  const rarityF = document.getElementById('rarityFilter').value;
+  const slotsToShow = slotF === 'all' ? SLOTS : SLOTS.filter(sl => sl.id === slotF);
+  const rarities = rarityF === 'all' ? RARITIES : [rarityF];
+  let html = '';
+  slotsToShow.forEach(sl => {
+    rarities.forEach(rarity => {
+      const color = RARITY_COLOR[rarity];
+      html += `<div style="margin-bottom:12px">
+        <div style="font-size:11px;font-weight:700;color:${color};margin-bottom:4px;display:flex;align-items:center;gap:6px">
+          <span>${sl.icon} ${sl.vi}</span>
+          <span style="background:${color}22;border:1px solid ${color}44;padding:1px 7px;border-radius:3px;font-size:10px">${rarity}</span>
+        </div>`;
+      ITEM_POOLS[sl.id].forEach(item => {
+        const score = item.scoresMap?.[rarity] ?? 0;
+        const equipped = state.gear[sl.id] && state.gear[sl.id].itemId === item.id && state.gear[sl.id].rarity === rarity;
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:2px 6px;border-radius:4px;background:${equipped?'#1e3a5f':'#1e1e36'};margin-bottom:1px;font-size:11px;${equipped?'border:1px solid '+color:''}">
+          <span style="display:flex;gap:5px;align-items:center">
+            <span style="color:#4b5563;font-size:10px">#${String(item.idx+1).padStart(2,'0')}</span>
+            <span>Ch${item.chapter}</span>
+            <span style="color:${color}">${item.name}</span>
+          </span>
+          <span style="font-weight:700;color:${color}">${fmt(score)}</span>
+        </div>`;
+      });
+      html += `</div>`;
+    });
+  });
+  document.getElementById('rarityListContent').innerHTML = html;
+}
+
+function setTab(name, el) {
+  ['log','stats','rarity','prob'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===name?'':'none';
+  });
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  if (name==='prob') buildProbEditor();
+  if (name==='rarity') renderRarityList();
+}
+
+// Populate slot filters
+SLOTS.forEach(sl => {
+  ['slotFilter','raritySlotFilter'].forEach(id => {
+    const opt = document.createElement('option');
+    opt.value = sl.id;
+    opt.textContent = `${sl.icon} ${sl.vi} (66 items)`;
+    document.getElementById(id).appendChild(opt);
+  });
+});
+
+// Init — khởi tạo với Nerf Ball Gun I mặc định
+resetAll();
+</script>
+</body>
+</html>
