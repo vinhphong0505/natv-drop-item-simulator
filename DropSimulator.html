@@ -1558,14 +1558,14 @@ function pickItem(slotId, ch) {
 // Groups 4–7: tăng dần Epic/Legendary
 // Common tối đa Ch5, Ch6+ = 0% Common
 const DEFAULT_PROB = [
-  [80, 20,  0,  0, 0], // Ch 1-3
-  [68, 30,  2,  0, 0], // Ch 4-6  : Rare bắt đầu
-  [55, 39,  6,  0, 0], // Ch 7-9
-  [38, 47, 15,  0, 0], // Ch10-12
-  [20, 53, 24,  3, 0], // Ch13-15 : Epic bắt đầu
-  [ 5, 48, 36, 10, 1], // Ch16-18
-  [ 0, 35, 42, 19, 4], // Ch19-21
-  [ 0, 20, 43, 28, 9], // Ch22-24
+  [70, 30,  0,  0, 0], // Ch 1-3
+  [55, 38,  7,  0, 0], // Ch 4-6  : Rare bắt đầu
+  [40, 42, 18,  0, 0], // Ch 7-9
+  [25, 45, 28,  2, 0], // Ch10-12
+  [10, 48, 34,  7, 1], // Ch13-15 : Epic bắt đầu
+  [ 0, 38, 42, 16, 4], // Ch16-18
+  [ 0, 25, 44, 24, 7], // Ch19-21
+  [ 0, 12, 44, 32,12], // Ch22-24
 ];
 
 // Prob group index for a chapter (0–7)
@@ -1573,6 +1573,19 @@ const DEFAULT_PROB = [
 function probGroup(ch) {
   if (ch <= 3) return 0;
   return Math.min(1 + Math.floor((ch - 4) / 3), 7);
+}
+
+// Hard cap rarity per chapter range
+// Ch 1–6: max Uncommon | Ch 7–12: max Rare | Ch 13–18: max Epic | Ch 19–24: max Legendary
+function rarityHardCap(ch) {
+  if (ch <= 6)  return 1; // Uncommon
+  if (ch <= 12) return 2; // Rare
+  if (ch <= 18) return 3; // Epic
+  return 4;               // Legendary
+}
+function capRarity(rarity, ch) {
+  const cap = rarityHardCap(ch);
+  return RARITIES.indexOf(rarity) > cap ? RARITIES[cap] : rarity;
 }
 
 // Item score from item object
@@ -1650,6 +1663,7 @@ function doMobDrop() {
   const r = Math.random() * 100;
   let acc = 0, rarity = 'Common';
   for (let i = 0; i < 3; i++) { acc += p[i]; if (r < acc) { rarity = RARITIES[i]; break; } }
+  rarity = capRarity(rarity, ch);
 
   const item = pickItem(slot.id, ch);
   const score = calcScore(item, rarity);
@@ -1688,17 +1702,18 @@ function doBoss() {
 
   const isFinal = isFinalBoss(ch, state.bossIdx);
   const slot = rollSlot();
-  let rarity = rollRarity(ch, isFinal);
+  let rarity = capRarity(rollRarity(ch, isFinal), ch);
 
-  // Pity system: 5 consecutive no-upgrades → guaranteed Rare+
-  if (state.pityCount >= 5 && RARITIES.indexOf(rarity) < 2) {
-    rarity = 'Rare';
+  // Pity system: 3 consecutive no-upgrades → guaranteed Rare+ (capped by chapter)
+  if (state.pityCount >= 3 && RARITIES.indexOf(rarity) < 2) {
+    rarity = capRarity('Rare', ch);
   }
 
   let item = pickItem(slot.id, ch);
   let score = calcScore(item, rarity);
   const current = state.gear[slot.id];
   const isNew = !current;
+
 
   // Hướng C: Boss cuối chapter → guaranteed upgrade (capped theo max rarity của chapter)
   if (isFinal && !isNew) {
@@ -1764,6 +1779,7 @@ function doMobDropAuto() {
   let p = [...probs]; p[2] += p[3] + p[4]; p[3] = 0; p[4] = 0;
   const r = Math.random()*100; let acc=0, rarity='Common';
   for(let i=0;i<3;i++){acc+=p[i];if(r<acc){rarity=RARITIES[i];break;}}
+  rarity=capRarity(rarity,ch);
   const item=pickItem(slot.id,ch);
   const score=calcScore(item,rarity);
   const current=state.gear[slot.id];
@@ -1783,8 +1799,8 @@ function doBossAuto() {
 
   const isFinal = isFinalBoss(ch, state.bossIdx);
   const slot = rollSlot();
-  let rarity = rollRarity(ch, isFinal);
-  if (state.pityCount >= 5 && RARITIES.indexOf(rarity) < 2) rarity = 'Rare';
+  let rarity = capRarity(rollRarity(ch, isFinal), ch);
+  if (state.pityCount >= 3 && RARITIES.indexOf(rarity) < 2) rarity = capRarity('Rare', ch);
   const item = pickItem(slot.id, ch);
   const score = calcScore(item, rarity);
   const current = state.gear[slot.id];
