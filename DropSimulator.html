@@ -1558,14 +1558,14 @@ function pickItem(slotId, ch) {
 // Groups 4–7: tăng dần Epic/Legendary
 // Common tối đa Ch5, Ch6+ = 0% Common
 const DEFAULT_PROB = [
-  [80,20, 0, 0, 0], // Ch 1-2  : Common 80%
-  [50,35,15, 0, 0], // Ch 3-5  : Common 50%, Rare 15%
-  [15,45,38, 2, 0], // Ch 6-8  : Common 15%, Epic giảm còn 2%
-  [10,35,45, 9, 1], // Ch 9-11 : Common 10%, Rare dominant
-  [ 5,25,50,17, 3], // Ch12-14 : Common 5% cuối cùng
-  [ 0,12,55,28, 5], // Ch15-17 : Rare 55%, Epic/Leg giảm mạnh
-  [ 0, 5,52,35, 8], // Ch18-21 : Rare 52%
-  [ 0, 0,45,40,15], // Ch22-24 : Rare 45%, Leg 15%
+  [80, 20,  0,  0, 0], // Ch 1-2
+  [60, 37,  3,  0, 0], // Ch 3-5
+  [50, 45,  5,  0, 0], // Ch 6-8
+  [40, 50,  9,  1, 0], // Ch 9-11
+  [25, 55, 17,  3, 0], // Ch12-14
+  [10, 60, 21,  8, 1], // Ch15-17
+  [ 0, 50, 32, 15, 3], // Ch18-21
+  [ 0, 35, 37, 20, 8], // Ch22-24
 ];
 
 // Prob group index for a chapter (0–7)
@@ -2087,12 +2087,14 @@ function applyProb() {
   }
   state.customProb = p;
   DROP_RATES = p;
+  localStorage.setItem('natv_customProb', JSON.stringify(p));
   document.getElementById('probErr').textContent = '';
   alert('Đã áp dụng drop rates mới!');
 }
 
 function resetProb() {
   state.customProb = null;
+  localStorage.removeItem('natv_customProb');
   buildProbEditor();
   alert('Đã về drop rates mặc định!');
 }
@@ -2158,6 +2160,14 @@ function renderRarityList() {
 });
 
 resetAll();
+// Khôi phục customProb từ localStorage nếu có
+try {
+  const saved = localStorage.getItem('natv_customProb');
+  if (saved) {
+    state.customProb = JSON.parse(saved);
+    DROP_RATES = state.customProb;
+  }
+} catch(e) {}
 buildProbEditor();
 render();
 </script>
