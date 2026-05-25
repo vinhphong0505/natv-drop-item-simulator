@@ -1557,14 +1557,14 @@ function pickItem(slotId, ch) {
 // Groups 4–7: tăng dần Epic/Legendary
 // Common tối đa Ch5, Ch6+ = 0% Common
 const DEFAULT_PROB = [
-  [80,20, 0, 0, 0], // Ch 1-2  : Common 80% / Uncommon 20%
-  [45,38,17, 0, 0], // Ch 3-5  : Common giảm, Rare bắt đầu 17%
-  [ 0,40,40,18, 2], // Ch 6-8  : Common = 0%, Rare ngang Uncommon
-  [ 0,22,42,27, 9], // Ch 9-11 : Rare dominant, Legendary 9%
-  [ 0,10,38,35,17], // Ch12-14
-  [ 0, 4,32,40,24], // Ch15-17
-  [ 0, 1,24,44,31], // Ch18-21
-  [ 0, 0,18,45,37], // Ch22-24
+  [80,20, 0, 0, 0], // Ch 1-2  : Common 80%
+  [50,35,15, 0, 0], // Ch 3-5  : Common 50%, Rare 15%
+  [15,45,38, 2, 0], // Ch 6-8  : Common 15%, Epic giảm còn 2%
+  [10,35,45, 9, 1], // Ch 9-11 : Common 10%, Rare dominant
+  [ 5,25,50,17, 3], // Ch12-14 : Common 5% cuối cùng
+  [ 0,12,55,28, 5], // Ch15-17 : Rare 55%, Epic/Leg giảm mạnh
+  [ 0, 5,52,35, 8], // Ch18-21 : Rare 52%
+  [ 0, 0,45,40,15], // Ch22-24 : Rare 45%, Leg 15%
 ];
 
 // Prob group index for a chapter (0–7)
@@ -1648,10 +1648,33 @@ function doBoss() {
     rarity = 'Rare';
   }
 
-  const item  = pickItem(slot.id, ch);
-  const score = calcScore(item, rarity);
+  let item = pickItem(slot.id, ch);
+  let score = calcScore(item, rarity);
   const current = state.gear[slot.id];
   const isNew = !current;
+
+  // Hướng C: Boss cuối chapter → guaranteed upgrade
+  if (isFinal && !isNew) {
+    const curScore = current.score;
+    // Thử bump rarity lên cho đến khi score > curScore
+    if (score <= curScore) {
+      for (let ri = RARITIES.indexOf(rarity) + 1; ri < RARITIES.length; ri++) {
+        const tryScore = calcScore(item, RARITIES[ri]);
+        if (tryScore > curScore) { rarity = RARITIES[ri]; score = tryScore; break; }
+      }
+    }
+    // Nếu vẫn không đủ → thử item mạnh nhất trong chapter pool
+    if (score <= curScore) {
+      const pool = CH_ITEMS[slot.id][ch] || [];
+      for (const candidate of pool) {
+        for (let ri = RARITIES.length - 1; ri >= 0; ri--) {
+          const tryScore = calcScore(candidate, RARITIES[ri]);
+          if (tryScore > curScore) { item = candidate; rarity = RARITIES[ri]; score = tryScore; break; }
+        }
+        if (score > curScore) break;
+      }
+    }
+  }
 
   state.bossIdx++;
   state.stats.total++;
