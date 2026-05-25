@@ -1489,6 +1489,17 @@ const SLOT_STAT_LABELS = {
   waist: {s1:"HP",s2:"HP REGEN"}
 };
 
+const ITEM_LEVELS = {
+  weapon: [1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, 10, 11, 11, 11, 12, 12, 12, 13, 13, 13, 14, 14, 14, 15, 15, 15, 16, 16, 16, 17, 17, 18, 18, 18, 19, 19, 20, 20],
+  armor: [1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13, 13, 14, 15, 16, 16, 17, 18, 20, 22, 24, 25, 27, 29, 30, 32, 33, 35, 37, 38, 40, 42, 43, 45, 47, 48, 50, 52, 53, 55, 57, 58, 60, 61, 63, 65, 66, 68, 70, 71, 73, 75, 77, 79, 80, 82, 85, 87, 89, 91],
+  glove: [4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 8, 8, 8, 9, 9, 10, 10, 10, 11, 11, 12, 12, 13, 13, 13, 14, 14, 15, 15, 15, 16, 16, 17, 17, 18, 18, 18, 19, 19, 20, 20, 20, 21, 21, 22, 22, 23, 23, 24, 24, 25, 25, 26, 26],
+  feet: [7, 8, 8, 8, 9, 9, 9, 10, 10, 10, 11, 11, 11, 12, 12, 12, 13, 13, 14, 14, 14, 15, 15, 15, 17, 17, 18, 19, 20, 21, 22, 22, 23, 24, 25, 26, 27, 27, 28, 29, 30, 31, 32, 32, 33, 34, 35, 36, 36, 37, 38, 39, 40, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52],
+  hat: [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 6, 7, 8, 8, 9, 10, 10, 11, 12, 12, 13, 14, 14, 15, 16, 17, 17, 18, 19, 19, 20, 21, 22, 23, 24, 25, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40],
+  ring: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 10, 10, 10, 11, 11, 11, 12],
+  necklace: [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 10, 10, 10, 11, 11, 12, 12, 12, 13, 13, 14, 14, 15, 15, 15, 16, 16, 17, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 23],
+  waist: [1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 8, 8, 8, 9, 9, 9, 11, 11, 12, 13, 14, 15, 16, 16, 17, 18, 19, 20, 21, 21, 22, 23, 24, 25, 26, 26, 27, 28, 29, 30, 30, 31, 32, 33, 34, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46]
+};
+
 
 // Build item pool: 66 items per slot, score từ CSV_SCORES
 // chapter(i) = floor(i × 24 / 66) + 1
@@ -1766,8 +1777,9 @@ function chSet(v) {
 // ═══════════════════════════════════════════════════════
 function fmt(n) {
   if (n >= 1e6) return (n/1e6).toFixed(2)+'M';
-  if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
-  return n.toFixed(0);
+  if (n >= 1e3) return (n/1e3).toFixed(2)+'K';
+  // Hiển thị đúng số thực, bỏ số 0 thừa ở cuối
+  return parseFloat(n.toFixed(2)).toString();
 }
 
 function rarityBadge(r) {
@@ -1840,7 +1852,7 @@ function render() {
       div.innerHTML = `
         <div class="gear-slot-name">${sl.icon} ${sl.vi}</div>
         ${rarityBadge(g.rarity)}
-        <div class="gear-item-name" style="color:${RARITY_COLOR[g.rarity]}">${g.name}</div>
+        <div class="gear-item-name" style="color:${RARITY_COLOR[g.rarity]}">${g.name} <span style="font-size:9px;color:#a78bfa;font-weight:600">Lv.${ITEM_LEVELS[sl.id]?.[g.itemIdx]||'?'}</span></div>
         <div class="gear-score">${fmt(g.score)} pts · Ch${g.chapter}</div>
       `;
     } else {
@@ -1865,7 +1877,7 @@ function render() {
     div.innerHTML = `
       <div style="font-size:16px">${e.slot.icon}</div>
       <div class="drop-card-info">
-        <div class="drop-card-name" style="color:${RARITY_COLOR[e.rarity]}">${e.name} ${rarityBadge(e.rarity)}</div>
+        <div class="drop-card-name" style="color:${RARITY_COLOR[e.rarity]}">${e.name} <span style="font-size:9px;color:#a78bfa;font-weight:600">Lv.${ITEM_LEVELS[e.slot.id]?.[e.itemIdx]||'?'}</span> ${rarityBadge(e.rarity)}</div>
         <div class="drop-card-sub">${e.slot.vi} · #${String(e.itemIdx+1).padStart(2,'0')} · Ch${e.ch} Boss#${e.boss}${e.isFinal?' ★':''}</div>
       </div>
       <div style="text-align:right">
