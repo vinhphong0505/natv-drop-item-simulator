@@ -1747,8 +1747,10 @@ function doBoss() {
   let rarity = capRarity(rollRarity(ch, isFinal), ch);
 
   // Pity system: 3 consecutive no-upgrades → guaranteed Rare+ (capped by chapter)
-  if (state.pityCount >= 3 && RARITIES.indexOf(rarity) < 2) {
+  let isPity = false;
+  if (state.pityCount >= 5 && RARITIES.indexOf(rarity) < 2) {
     rarity = capRarity('Rare', ch);
+    isPity = true;
   }
 
   let item = pickItem(slot.id, ch);
@@ -1791,7 +1793,7 @@ function doBoss() {
     // No existing gear → auto equip
     state.gear[slot.id] = { name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, chapter: ch };
     state.pityCount = 0;
-    const entry = { ch, boss: state.bossIdx, isFinal, slot, name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, isUpgrade: true, isNew: true, prevScore: null, prevName: null, prevRarity: null, prevItemIdx: null };
+    const entry = { ch, boss: state.bossIdx, isFinal, slot, name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, isUpgrade: true, isNew: true, isPity: false, prevScore: null, prevName: null, prevRarity: null, prevItemIdx: null };
     state.log.unshift(entry);
     if (state.log.length > 200) state.log.pop();
     render();
@@ -1811,7 +1813,7 @@ function doBoss() {
     } else {
       state.pityCount++;
     }
-    const entry = { ch, boss: state.bossIdx, isFinal, slot, name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, isUpgrade, isNew: false, prevScore: current.score, prevName: current.name, prevRarity: current.rarity, prevItemIdx: current.itemIdx };
+    const entry = { ch, boss: state.bossIdx, isFinal, slot, name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, isUpgrade, isNew: false, isPity, prevScore: current.score, prevName: current.name, prevRarity: current.rarity, prevItemIdx: current.itemIdx };
     state.log.unshift(entry);
     if (state.log.length > 200) state.log.pop();
     render();
@@ -1848,7 +1850,8 @@ function doBossAuto() {
   const isFinal = isFinalBoss(ch, state.bossIdx);
   const slot = rollSlot();
   let rarity = capRarity(rollRarity(ch, isFinal), ch);
-  if (state.pityCount >= 3 && RARITIES.indexOf(rarity) < 2) rarity = capRarity('Rare', ch);
+  let isPity = false;
+  if (state.pityCount >= 5 && RARITIES.indexOf(rarity) < 2) { rarity = capRarity('Rare', ch); isPity = true; }
   const item = pickItem(slot.id, ch);
   const score = calcScore(item, rarity);
   const current = state.gear[slot.id];
@@ -1867,7 +1870,7 @@ function doBossAuto() {
   state.stats.total++;
   state.stats.byRarity[rarity]++;
   if (isUpgrade) state.stats.upgrades++;
-  const entry = { ch, boss: state.bossIdx, isFinal, slot, name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, isUpgrade, isNew, prevScore: current ? current.score : null, prevName: current ? current.name : null, prevRarity: current ? current.rarity : null, prevItemIdx: current ? current.itemIdx : null };
+  const entry = { ch, boss: state.bossIdx, isFinal, slot, name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, isUpgrade, isNew, isPity, prevScore: current ? current.score : null, prevName: current ? current.name : null, prevRarity: current ? current.rarity : null, prevItemIdx: current ? current.itemIdx : null };
   state.log.unshift(entry);
   if (state.log.length > 200) state.log.pop();
 }
@@ -1986,9 +1989,10 @@ function render() {
   }
 
   // Pity
-  const pct = Math.min(state.pityCount/5*100,100);
+  const PITY_MAX = 5;
+  const pct = Math.min(state.pityCount/PITY_MAX*100,100);
   document.getElementById('pityFill').style.width = pct+'%';
-  document.getElementById('pityTxt').textContent = state.pityCount >= 5 ? '⚡ PITY!' : `${state.pityCount}/5`;
+  document.getElementById('pityTxt').textContent = state.pityCount >= PITY_MAX ? '⚡ PITY!' : `${state.pityCount}/${PITY_MAX}`;
 
   // Boss button
   const done = state.bossIdx >= bosses;
@@ -2041,7 +2045,7 @@ function render() {
     const badge = e.isNew
       ? `<span class="drop-badge badge-new">Mới</span>`
       : e.isUpgrade
-        ? `<span class="drop-badge badge-upgrade">↑ Upgrade</span>`
+        ? `<span class="drop-badge badge-upgrade">↑ Upgrade</span>${e.isPity ? ' <span class="drop-badge" style="background:#78350f;color:#fbbf24" title="Pity guaranteed">🛡 Pity</span>' : ''}`
         : `<span class="drop-badge badge-sell">Bán</span>`;
     const prevLv = e.prevItemIdx != null ? (ITEM_LEVELS[e.slot.id]?.[e.prevItemIdx] || '?') : '?';
     const prevTxt = e.prevScore != null
