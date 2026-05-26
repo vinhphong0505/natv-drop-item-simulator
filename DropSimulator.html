@@ -123,9 +123,40 @@ input[type=range] { width: 100%; accent-color: #7c3aed; }
 
 .sim-count { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .sim-count input { background: #1e1e36; border: 1px solid #374151; color: #e0e0f0; border-radius: 5px; padding: 4px 8px; width: 70px; font-size: 12px; }
+/* Rarity downgrade modal */
+.rd-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:1000; display:flex; align-items:center; justify-content:center; }
+.rd-modal { background:#1e1e36; border:1px solid #7c3aed; border-radius:14px; padding:20px; width:320px; max-width:90vw; }
+.rd-title { font-size:13px; font-weight:800; color:#f59e0b; margin-bottom:14px; text-align:center; }
+.rd-compare { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
+.rd-item { border-radius:8px; padding:10px; text-align:center; }
+.rd-item-label { font-size:9px; color:#9ca3af; margin-bottom:4px; font-weight:700; text-transform:uppercase; }
+.rd-item-name { font-size:11px; font-weight:700; margin-bottom:3px; }
+.rd-item-score { font-size:16px; font-weight:800; }
+.rd-item-lv { font-size:9px; color:#a78bfa; font-weight:600; }
+.rd-note { font-size:10px; color:#9ca3af; text-align:center; margin-bottom:14px; line-height:1.5; }
+.rd-actions { display:flex; gap:8px; }
+.rd-actions button { flex:1; padding:10px; border-radius:8px; border:none; cursor:pointer; font-size:12px; font-weight:800; }
+.rd-equip { background:#7c3aed; color:#fff; }
+.rd-sell  { background:#374151; color:#d1d5db; }
 </style>
 </head>
 <body>
+<!-- Rarity Downgrade Modal -->
+<div class="rd-overlay" id="rdOverlay" style="display:none">
+  <div class="rd-modal">
+    <div class="rd-title">⚠️ Rarity thấp hơn nhưng score cao hơn</div>
+    <div class="rd-compare">
+      <div class="rd-item" id="rdNew"></div>
+      <div class="rd-item" id="rdOld"></div>
+    </div>
+    <div class="rd-note" id="rdNote"></div>
+    <div class="rd-actions">
+      <button class="rd-equip" onclick="rdDecide(true)">✓ Trang bị</button>
+      <button class="rd-sell"  onclick="rdDecide(false)">✕ Bán</button>
+    </div>
+  </div>
+</div>
+
 <div class="app">
 
 <!-- LEFT: Controls + Gear -->
@@ -1538,13 +1569,18 @@ SLOTS.forEach(sl => {
     CH_ITEMS[sl.id][ch] = ITEM_POOLS[sl.id].filter(it => it.chapter === ch);
 });
 
-function pickItem(slotId, ch) {
-  let pool = CH_ITEMS[slotId][ch];
-  if (!pool || !pool.length) {
-    // fallback: nearest lower chapter
-    for (let c = ch-1; c >= 1; c--) {
-      pool = CH_ITEMS[slotId][c];
-      if (pool && pool.length) break;
+function pickItem(slotId, ch, range = 0) {
+  // Gom pool từ ch-range đến ch+range
+  let pool = [];
+  for (let c = Math.max(1, ch - range); c <= Math.min(24, ch + range); c++) {
+    const p = CH_ITEMS[slotId][c];
+    if (p && p.length) pool = pool.concat(p);
+  }
+  // fallback nếu pool rỗng
+  if (!pool.length) {
+    for (let c = ch - 1; c >= 1; c--) {
+      const p = CH_ITEMS[slotId][c];
+      if (p && p.length) { pool = p; break; }
     }
   }
   return pool[Math.floor(Math.random() * pool.length)];
@@ -1670,6 +1706,12 @@ function doMobDrop() {
   const current = state.gear[slot.id];
   const isNew = !current;
   const isSameItemHigherRarity = !isNew && item.idx === current.itemIdx && RARITIES.indexOf(rarity) > RARITIES.indexOf(current.rarity);
+  const isRarityDownMob = !isNew && RARITIES.indexOf(rarity) < RARITIES.indexOf(current.rarity);
+  // Hướng B: rarity thấp hơn nhưng score cao hơn → hỏi user
+  if (isRarityDownMob && score > current.score && !isSameItemHigherRarity) {
+    rdShow(slot, item, rarity, score, current, ch, state.bossIdx + 1, false, true);
+    return; // chờ user quyết định
+  }
   const isUpgrade = isNew || score > current.score || isSameItemHigherRarity;
 
   if (isUpgrade) {
@@ -1709,7 +1751,7 @@ function doBoss() {
     rarity = capRarity('Rare', ch);
   }
 
-  let item = pickItem(slot.id, ch);
+  let item = pickItem(slot.id, ch, 1); // Boss: pool mở rộng ±1 chapter
   let score = calcScore(item, rarity);
   const current = state.gear[slot.id];
   const isNew = !current;
@@ -1755,6 +1797,12 @@ function doBoss() {
     render();
   } else {
     const isSameItemHigherRarity = item.idx === current.itemIdx && RARITIES.indexOf(rarity) > RARITIES.indexOf(current.rarity);
+    const isRarityDown = RARITIES.indexOf(rarity) < RARITIES.indexOf(current.rarity);
+    // Hướng B: rarity thấp hơn nhưng score cao hơn → hỏi user
+    if (isRarityDown && score > current.score && !isSameItemHigherRarity) {
+      rdShow(slot, item, rarity, score, current, ch, state.bossIdx, isFinal, false);
+      return; // chờ user quyết định
+    }
     const isUpgrade = score > current.score || isSameItemHigherRarity;
     if (isUpgrade) {
       state.gear[slot.id] = { name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, chapter: ch };
@@ -1801,7 +1849,7 @@ function doBossAuto() {
   const slot = rollSlot();
   let rarity = capRarity(rollRarity(ch, isFinal), ch);
   if (state.pityCount >= 3 && RARITIES.indexOf(rarity) < 2) rarity = capRarity('Rare', ch);
-  const item = pickItem(slot.id, ch);
+  const item = pickItem(slot.id, ch, 1); // Boss: pool mở rộng ±1 chapter
   const score = calcScore(item, rarity);
   const current = state.gear[slot.id];
   const isNew = !current;
@@ -2174,6 +2222,53 @@ function renderRarityList() {
     sel.appendChild(opt);
   });
 });
+
+// ── Rarity Downgrade Modal ──────────────────────────────
+let rdPending = null; // { slot, item, rarity, score, current, entry }
+
+function rdShow(slot, item, rarity, score, current, ch, boss, isFinal, isMobDrop) {
+  const lv = ITEM_LEVELS[slot.id]?.[item.idx] || '?';
+  const lvOld = ITEM_LEVELS[slot.id]?.[current.itemIdx] || '?';
+  const diff = score - current.score;
+  document.getElementById('rdNew').className = `rd-item ${RARITY_BG[rarity]}`;
+  document.getElementById('rdNew').innerHTML = `
+    <div class="rd-item-label">MỚI DROP</div>
+    <div class="rd-item-name" style="color:${RARITY_COLOR[rarity]}">${item.name}</div>
+    <div class="rd-item-lv">Lv.${lv} · ${rarity}</div>
+    <div class="rd-item-score" style="color:${RARITY_COLOR[rarity]}">${fmt(score)}</div>`;
+  document.getElementById('rdOld').className = `rd-item ${RARITY_BG[current.rarity]}`;
+  document.getElementById('rdOld').innerHTML = `
+    <div class="rd-item-label">ĐANG EQUIP</div>
+    <div class="rd-item-name" style="color:${RARITY_COLOR[current.rarity]}">${current.name}</div>
+    <div class="rd-item-lv">Lv.${lvOld} · ${current.rarity}</div>
+    <div class="rd-item-score" style="color:${RARITY_COLOR[current.rarity]}">${fmt(current.score)}</div>`;
+  document.getElementById('rdNote').innerHTML =
+    `Score cao hơn <strong style="color:#34d399">+${fmt(diff)}</strong> nhưng rarity thấp hơn (<span style="color:${RARITY_COLOR[current.rarity]}">${current.rarity}</span> → <span style="color:${RARITY_COLOR[rarity]}">${rarity}</span>).<br>Bạn muốn trang bị hay bán?`;
+  rdPending = { slot, item, rarity, score, current, ch, boss, isFinal, isMobDrop };
+  document.getElementById('rdOverlay').style.display = 'flex';
+}
+
+function rdDecide(equip) {
+  document.getElementById('rdOverlay').style.display = 'none';
+  if (!rdPending) return;
+  const { slot, item, rarity, score, current, ch, boss, isFinal, isMobDrop } = rdPending;
+  rdPending = null;
+  const isUpgrade = equip;
+  if (equip) {
+    state.gear[slot.id] = { name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, chapter: ch };
+    state.pityCount = 0;
+    state.stats.upgrades++;
+  } else {
+    state.pityCount++;
+  }
+  state.stats.total++;
+  state.stats.byRarity[rarity]++;
+  const entry = { ch, boss, isFinal, isMobDrop, slot, name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, isUpgrade, isNew: false, prevScore: current.score, prevName: current.name, prevRarity: current.rarity, prevItemIdx: current.itemIdx };
+  state.log.unshift(entry);
+  if (state.log.length > 200) state.log.pop();
+  if (isMobDrop) state.mobDropDone = true;
+  render();
+}
 
 resetAll();
 // Khôi phục customProb từ localStorage nếu có
