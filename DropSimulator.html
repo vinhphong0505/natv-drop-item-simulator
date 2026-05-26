@@ -1717,7 +1717,7 @@ function doMobDrop() {
   if (isUpgrade) {
     state.gear[slot.id] = { name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, chapter: ch };
     if (!isNew) state.stats.upgrades++;
-    // Mob drop KHÔNG ảnh hưởng pity
+    state.pityCount = 0; // Mob upgrade → reset pity
   }
   state.stats.total++;
   state.stats.byRarity[rarity]++;
@@ -1818,7 +1818,7 @@ function doMobDropAuto() {
   const score=calcScore(item,rarity);
   const current=state.gear[slot.id];
   const isNew=!current, isSameItemHigherRarity2=!isNew&&item.idx===current.itemIdx&&RARITIES.indexOf(rarity)>RARITIES.indexOf(current.rarity), isUpgrade=isNew||score>current.score||isSameItemHigherRarity2;
-  if(isUpgrade){state.gear[slot.id]={name:item.name,itemId:item.id,itemIdx:item.idx,rarity,score,chapter:ch};if(!isNew)state.stats.upgrades++;} // Mob drop không ảnh hưởng pity
+  if(isUpgrade){state.gear[slot.id]={name:item.name,itemId:item.id,itemIdx:item.idx,rarity,score,chapter:ch};if(!isNew)state.stats.upgrades++;state.pityCount=0;} // Mob upgrade → reset pity
   state.stats.total++;state.stats.byRarity[rarity]++;
   const entry={ch,boss:state.bossIdx+1,isFinal:false,isMobDrop:true,slot,name:item.name,itemId:item.id,itemIdx:item.idx,rarity,score,isUpgrade,isNew,prevScore:current?current.score:null,prevName:current?current.name:null,prevRarity:current?current.rarity:null,prevItemIdx:current?current.itemIdx:null};
   state.log.unshift(entry);if(state.log.length>200)state.log.pop();
@@ -2244,11 +2244,10 @@ function rdDecide(equip) {
   const isUpgrade = equip;
   if (equip) {
     state.gear[slot.id] = { name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, chapter: ch };
-    state.pityCount = 0;
     state.stats.upgrades++;
-  } else {
-    state.pityCount++;
   }
+  // Dù trang bị hay bán qua popup → đều reset pity (user đã có drop tốt, chỉ là không chọn)
+  state.pityCount = 0;
   state.stats.total++;
   state.stats.byRarity[rarity]++;
   const entry = { ch, boss, isFinal, isMobDrop, slot, name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, isUpgrade, isNew: false, prevScore: current.score, prevName: current.name, prevRarity: current.rarity, prevItemIdx: current.itemIdx };
