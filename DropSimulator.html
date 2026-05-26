@@ -2039,7 +2039,7 @@ function render() {
       <div style="font-size:16px">${e.slot.icon}</div>
       <div class="drop-card-info">
         <div class="drop-card-name" style="color:${RARITY_COLOR[e.rarity]}">${e.name} <span style="font-size:9px;color:#a78bfa;font-weight:600">Lv.${ITEM_LEVELS[e.slot.id]?.[e.itemIdx]||'?'}</span> ${rarityBadge(e.rarity)}</div>
-        <div class="drop-card-sub">${e.slot.vi} · #${String(e.itemIdx+1).padStart(2,'0')} · Ch${e.ch} ${e.isMobDrop?'Wave'+(e.boss*5-2)+'-'+(e.boss*5-2+2):'Boss#'+e.boss}${e.isFinal?' ★':''}</div>
+        <div class="drop-card-sub">${e.slot.vi} · #${String(e.itemIdx+1).padStart(2,'0')} · Ch${e.ch} ${e.isMobDrop ? '<span style="background:#14532d;color:#4ade80;font-size:8px;font-weight:800;padding:1px 5px;border-radius:3px">⚔️ MOB</span>' : e.isFinal ? '<span style="background:#78350f;color:#fbbf24;font-size:8px;font-weight:800;padding:1px 5px;border-radius:3px">★ BOSS</span>' : '<span style="background:#4c1d95;color:#c4b5fd;font-size:8px;font-weight:800;padding:1px 5px;border-radius:3px">👹 BOSS</span>'}</div>
       </div>
       <div style="text-align:right">
         <div class="drop-card-score" style="color:${RARITY_COLOR[e.rarity]}">${fmt(e.score)}</div>
@@ -2271,4 +2271,4 @@ render();
 </script>
 </body>
 </html>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
+                                                                                                                                                                                                                                                                                
