@@ -1717,10 +1717,7 @@ function doMobDrop() {
   if (isUpgrade) {
     state.gear[slot.id] = { name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, chapter: ch };
     if (!isNew) state.stats.upgrades++;
-    if (isNew) { state.pityCount = 0; }
-    else state.pityCount = 0;
-  } else {
-    state.pityCount++;
+    // Mob drop KHÔNG ảnh hưởng pity
   }
   state.stats.total++;
   state.stats.byRarity[rarity]++;
@@ -1759,40 +1756,15 @@ function doBoss() {
   const isNew = !current;
 
 
-  // Hướng C: Boss cuối chapter → guaranteed upgrade (capped theo max rarity của chapter)
-  if (isFinal && !isNew) {
-    const curScore = current.score;
-    const chProbs = state.customProb ? state.customProb[probGroup(ch)] : DEFAULT_PROB[probGroup(ch)];
-    const maxRarityIdx = chProbs.reduce((max, p, i) => p > 0 ? i : max, 0);
-    // Thử bump rarity lên nhưng không vượt quá max rarity của chapter
-    if (score <= curScore) {
-      for (let ri = RARITIES.indexOf(rarity) + 1; ri <= maxRarityIdx; ri++) {
-        const tryScore = calcScore(item, RARITIES[ri]);
-        if (tryScore > curScore) { rarity = RARITIES[ri]; score = tryScore; break; }
-      }
-    }
-    // Nếu vẫn không đủ → thử item mạnh nhất trong chapter pool (vẫn giới hạn max rarity)
-    if (score <= curScore) {
-      const pool = CH_ITEMS[slot.id][ch] || [];
-      for (const candidate of pool) {
-        for (let ri = maxRarityIdx; ri >= 0; ri--) {
-          const tryScore = calcScore(candidate, RARITIES[ri]);
-          if (tryScore > curScore) { item = candidate; rarity = RARITIES[ri]; score = tryScore; break; }
-        }
-        if (score > curScore) break;
-      }
-    }
-  }
 
   state.bossIdx++;
   state.mobDropDone = false; // reset cho cycle tiếp theo
-  state.stats.total++;
-  state.stats.byRarity[rarity]++;
 
   if (isNew) {
     // No existing gear → auto equip
     state.gear[slot.id] = { name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, chapter: ch };
     state.pityCount = 0;
+    state.stats.total++; state.stats.byRarity[rarity]++;
     const entry = { ch, boss: state.bossIdx, isFinal, slot, name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, isUpgrade: true, isNew: true, isPity: false, prevScore: null, prevName: null, prevRarity: null, prevItemIdx: null };
     state.log.unshift(entry);
     if (state.log.length > 200) state.log.pop();
@@ -1800,10 +1772,10 @@ function doBoss() {
   } else {
     const isSameItemHigherRarity = item.idx === current.itemIdx && RARITIES.indexOf(rarity) > RARITIES.indexOf(current.rarity);
     const isRarityDown = RARITIES.indexOf(rarity) < RARITIES.indexOf(current.rarity);
-    // Hướng B: rarity thấp hơn nhưng score cao hơn → hỏi user
-    if (isRarityDown && score > current.score && !isSameItemHigherRarity) {
+    // Hướng B: rarity thấp hơn nhưng score cao hơn → hỏi user (KHÔNG áp dụng cho final boss vì Hướng C đã guarantee)
+    if (isRarityDown && score > current.score && !isSameItemHigherRarity && !isFinal) {
       rdShow(slot, item, rarity, score, current, ch, state.bossIdx, isFinal, false);
-      return; // chờ user quyết định
+      return; // chờ user quyết định (stats sẽ được đếm trong rdDecide)
     }
     const isUpgrade = score > current.score || isSameItemHigherRarity;
     if (isUpgrade) {
@@ -1813,6 +1785,7 @@ function doBoss() {
     } else {
       state.pityCount++;
     }
+    state.stats.total++; state.stats.byRarity[rarity]++;
     const entry = { ch, boss: state.bossIdx, isFinal, slot, name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, isUpgrade, isNew: false, isPity, prevScore: current.score, prevName: current.name, prevRarity: current.rarity, prevItemIdx: current.itemIdx };
     state.log.unshift(entry);
     if (state.log.length > 200) state.log.pop();
@@ -1834,7 +1807,7 @@ function doMobDropAuto() {
   const score=calcScore(item,rarity);
   const current=state.gear[slot.id];
   const isNew=!current, isSameItemHigherRarity2=!isNew&&item.idx===current.itemIdx&&RARITIES.indexOf(rarity)>RARITIES.indexOf(current.rarity), isUpgrade=isNew||score>current.score||isSameItemHigherRarity2;
-  if(isUpgrade){state.gear[slot.id]={name:item.name,itemId:item.id,itemIdx:item.idx,rarity,score,chapter:ch};state.pityCount=0;if(!isNew)state.stats.upgrades++;}else{state.pityCount++;}
+  if(isUpgrade){state.gear[slot.id]={name:item.name,itemId:item.id,itemIdx:item.idx,rarity,score,chapter:ch};if(!isNew)state.stats.upgrades++;} // Mob drop không ảnh hưởng pity
   state.stats.total++;state.stats.byRarity[rarity]++;
   const entry={ch,boss:state.bossIdx+1,isFinal:false,isMobDrop:true,slot,name:item.name,itemId:item.id,itemIdx:item.idx,rarity,score,isUpgrade,isNew,prevScore:current?current.score:null,prevName:current?current.name:null,prevRarity:current?current.rarity:null,prevItemIdx:current?current.itemIdx:null};
   state.log.unshift(entry);if(state.log.length>200)state.log.pop();
