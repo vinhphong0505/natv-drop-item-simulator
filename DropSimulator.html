@@ -1751,7 +1751,7 @@ function doBoss() {
     rarity = capRarity('Rare', ch);
   }
 
-  let item = pickItem(slot.id, ch, 1); // Boss: pool mở rộng ±1 chapter
+  let item = pickItem(slot.id, ch);
   let score = calcScore(item, rarity);
   const current = state.gear[slot.id];
   const isNew = !current;
@@ -1849,7 +1849,7 @@ function doBossAuto() {
   const slot = rollSlot();
   let rarity = capRarity(rollRarity(ch, isFinal), ch);
   if (state.pityCount >= 3 && RARITIES.indexOf(rarity) < 2) rarity = capRarity('Rare', ch);
-  const item = pickItem(slot.id, ch, 1); // Boss: pool mở rộng ±1 chapter
+  const item = pickItem(slot.id, ch);
   const score = calcScore(item, rarity);
   const current = state.gear[slot.id];
   const isNew = !current;
