@@ -1611,21 +1611,7 @@ function probGroup(ch) {
   return Math.min(1 + Math.floor((ch - 4) / 3), 7);
 }
 
-// Hard cap rarity per chapter range
-// Ch 1–6: max Uncommon | Ch 7–12: max Rare | Ch 13–18: max Epic | Ch 19–24: max Legendary
-function rarityHardCap(ch) {
-  // Tự tính từ DROP_RATES: cap = rarity cao nhất có xác suất > 0 trong chapter group
-  const g = probGroup(ch);
-  const rates = DROP_RATES[g];
-  for (let i = rates.length - 1; i >= 0; i--) {
-    if (rates[i] > 0) return i;
-  }
-  return 0;
-}
-function capRarity(rarity, ch) {
-  const cap = rarityHardCap(ch);
-  return RARITIES.indexOf(rarity) > cap ? RARITIES[cap] : rarity;
-}
+// Hard cap đã bỏ — xác suất drop tự giới hạn qua DROP_RATES
 
 // Item score from item object
 function calcScore(item, rarity) { return item.scoresMap ? (item.scoresMap[rarity] || 0) : item.baseScore * SCORE_MULT[rarity]; }
@@ -1702,7 +1688,6 @@ function doMobDrop() {
   const r = Math.random() * 100;
   let acc = 0, rarity = 'Common';
   for (let i = 0; i < 3; i++) { acc += p[i]; if (r < acc) { rarity = RARITIES[i]; break; } }
-  rarity = capRarity(rarity, ch);
 
   const item = pickItem(slot.id, ch);
   const score = calcScore(item, rarity);
@@ -1744,7 +1729,7 @@ function doBoss() {
 
   const isFinal = isFinalBoss(ch, state.bossIdx);
   const slot = rollSlot();
-  let rarity = capRarity(rollRarity(ch, isFinal), ch);
+  let rarity = rollRarity(ch, isFinal);
 
   // Pity system: 5 consecutive no-upgrades → tìm item mạnh nhất trong chapter pool
   const isPity = state.pityCount >= 5;
@@ -1755,7 +1740,7 @@ function doBoss() {
   const isNew = !current;
 
   if (isPity && !isNew) {
-    const maxRarityIdx = rarityHardCap(ch);
+    const maxRarityIdx = RARITIES.length - 1; // không giới hạn rarity
     const pool = CH_ITEMS[slot.id][ch] || [];
     let bestItem = item, bestRarity = rarity, bestScore = score;
     for (const candidate of pool) {
@@ -1816,7 +1801,6 @@ function doMobDropAuto() {
   let p = [...probs]; p[2] += p[3] + p[4]; p[3] = 0; p[4] = 0;
   const r = Math.random()*100; let acc=0, rarity='Common';
   for(let i=0;i<3;i++){acc+=p[i];if(r<acc){rarity=RARITIES[i];break;}}
-  rarity=capRarity(rarity,ch);
   const item=pickItem(slot.id,ch);
   const score=calcScore(item,rarity);
   const current=state.gear[slot.id];
@@ -1836,9 +1820,8 @@ function doBossAuto() {
 
   const isFinal = isFinalBoss(ch, state.bossIdx);
   const slot = rollSlot();
-  let rarity = capRarity(rollRarity(ch, isFinal), ch);
+  let rarity = rollRarity(ch, isFinal);
   const isPity = state.pityCount >= 5;
-  if (isPity && RARITIES.indexOf(rarity) < 2) { rarity = capRarity('Rare', ch); }
   const item = pickItem(slot.id, ch);
   const score = calcScore(item, rarity);
   const current = state.gear[slot.id];
