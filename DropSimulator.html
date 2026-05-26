@@ -1614,10 +1614,13 @@ function probGroup(ch) {
 // Hard cap rarity per chapter range
 // Ch 1–6: max Uncommon | Ch 7–12: max Rare | Ch 13–18: max Epic | Ch 19–24: max Legendary
 function rarityHardCap(ch) {
-  if (ch <= 6)  return 1; // Uncommon
-  if (ch <= 12) return 2; // Rare
-  if (ch <= 18) return 3; // Epic
-  return 4;               // Legendary
+  // Tự tính từ DROP_RATES: cap = rarity cao nhất có xác suất > 0 trong chapter group
+  const g = probGroup(ch);
+  const rates = DROP_RATES[g];
+  for (let i = rates.length - 1; i >= 0; i--) {
+    if (rates[i] > 0) return i;
+  }
+  return 0;
 }
 function capRarity(rarity, ch) {
   const cap = rarityHardCap(ch);
