@@ -1743,11 +1743,10 @@ function doBoss() {
   const slot = rollSlot();
   let rarity = capRarity(rollRarity(ch, isFinal), ch);
 
-  // Pity system: 3 consecutive no-upgrades → guaranteed Rare+ (capped by chapter)
-  let isPity = false;
-  if (state.pityCount >= 5 && RARITIES.indexOf(rarity) < 2) {
+  // Pity system: 5 consecutive no-upgrades → guaranteed Rare+ (capped by chapter)
+  const isPity = state.pityCount >= 5; // true nếu đang ở trạng thái pity, kể cả khi rarity tự nhiên đã đủ
+  if (isPity && RARITIES.indexOf(rarity) < 2) {
     rarity = capRarity('Rare', ch);
-    isPity = true;
   }
 
   let item = pickItem(slot.id, ch);
@@ -1823,8 +1822,8 @@ function doBossAuto() {
   const isFinal = isFinalBoss(ch, state.bossIdx);
   const slot = rollSlot();
   let rarity = capRarity(rollRarity(ch, isFinal), ch);
-  let isPity = false;
-  if (state.pityCount >= 5 && RARITIES.indexOf(rarity) < 2) { rarity = capRarity('Rare', ch); isPity = true; }
+  const isPity = state.pityCount >= 5;
+  if (isPity && RARITIES.indexOf(rarity) < 2) { rarity = capRarity('Rare', ch); }
   const item = pickItem(slot.id, ch);
   const score = calcScore(item, rarity);
   const current = state.gear[slot.id];
