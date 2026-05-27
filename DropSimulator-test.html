@@ -258,7 +258,7 @@ input[type=range] { width: 100%; accent-color: #7c3aed; }
 <!-- ══ RARITY DOWNGRADE OVERLAY ══ -->
 <div class="rd-overlay" id="rdOverlay" style="display:none">
   <div class="rd-modal">
-    <div class="rd-title">⚠️ Hướng B — Rarity thấp hơn</div>
+    <div class="rd-title">🎯 Vui Lòng Chọn Equipment</div>
     <div class="rd-items">
       <div class="rd-item" id="rdNew"></div>
       <div class="rd-item" id="rdOld"></div>
@@ -2204,9 +2204,14 @@ function anyStatHigher(slotId, newIdx, newRarity, oldIdx, oldRarity) {
   if (!nSt || !oSt) return false;
   const s1n = parseStatVal(nSt.s1), s1o = parseStatVal(oSt.s1);
   const s2n = parseStatVal(nSt.s2), s2o = parseStatVal(oSt.s2);
-  if (s1n != null && s1o != null && s1n > s1o) return true;
-  if (s2n != null && s2n > (s2o ?? 0)) return true;
-  return false;
+
+  if (s2o !== null) {
+    // Equipped CÓ s2: cần CẢ 2 stats của new cao hơn
+    if (s2n === null) return false; // New thiếu s2 → không đủ điều kiện
+    return s1n !== null && s1o !== null && s1n > s1o && s2n > s2o;
+  }
+  // Equipped KHÔNG có s2: chỉ cần s1 cao hơn
+  return s1n !== null && s1o !== null && s1n > s1o;
 }
 
 function rdStatHtml(slotId, itemIdx, rarity, cmpIdx, cmpRarity) {
