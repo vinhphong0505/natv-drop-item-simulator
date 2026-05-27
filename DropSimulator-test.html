@@ -1,0 +1,1800 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Night Valley — Equipment Drop Simulator</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0f0; font-size: 13px; }
+
+/* Layout */
+.app { display: grid; grid-template-columns: 300px 1fr 260px; gap: 0; height: 100vh; overflow: hidden; }
+.panel { padding: 14px; overflow-y: auto; }
+.panel-left  { background: #16162a; border-right: 1px solid #2a2a44; }
+.panel-mid   { background: #0f0f1a; }
+.panel-right { background: #16162a; border-left: 1px solid #2a2a44; }
+
+/* Header */
+.app-title { font-size: 15px; font-weight: 800; color: #a78bfa; margin-bottom: 14px; letter-spacing: 0.05em; }
+.section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #6b7280; margin-bottom: 8px; margin-top: 14px; }
+
+/* Chapter control */
+.ch-control { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ch-label { font-size: 13px; font-weight: 700; color: #e0e0f0; }
+.ch-val { font-size: 20px; font-weight: 800; color: #a78bfa; min-width: 30px; text-align: center; }
+.btn { padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer; font-size: 12px; font-weight: 700; transition: all 0.15s; }
+.btn-sm { padding: 4px 10px; font-size: 11px; }
+.btn-purple { background: #7c3aed; color: #fff; }
+.btn-purple:hover { background: #6d28d9; }
+.btn-green { background: #059669; color: #fff; }
+.btn-green:hover { background: #047857; }
+.btn-blue { background: #2563eb; color: #fff; }
+.btn-blue:hover { background: #1d4ed8; }
+.btn-gray { background: #374151; color: #d1d5db; }
+.btn-gray:hover { background: #4b5563; }
+.btn-red { background: #dc2626; color: #fff; }
+.btn-red:hover { background: #b91c1c; }
+.btn-orange { background: #d97706; color: #fff; }
+.btn-orange:hover { background: #b45309; }
+input[type=range] { width: 100%; accent-color: #7c3aed; }
+
+/* Chapter info box */
+.ch-info { background: #1e1e36; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+.ch-stat { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 11px; }
+.ch-stat span:last-child { color: #a78bfa; font-weight: 700; }
+
+/* Rarity colors */
+.r-common    { color: #9ca3af; }
+.r-uncommon  { color: #34d399; }
+.r-rare      { color: #60a5fa; }
+.r-epic      { color: #c084fc; }
+.r-legendary { color: #fb923c; }
+
+/* Rarity backgrounds */
+.bg-common    { border-left: 3px solid #9ca3af; }
+.bg-uncommon  { border-left: 3px solid #34d399; }
+.bg-rare      { border-left: 3px solid #60a5fa; }
+.bg-epic      { border-left: 3px solid #c084fc; }
+.bg-legendary { border-left: 3px solid #fb923c; }
+
+/* Gear grid */
+.gear-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+.gear-slot { background: #1e1e36; border-radius: 8px; padding: 8px; min-height: 70px; border: 1px solid #2a2a44; }
+.gear-slot.filled { border-color: transparent; }
+.gear-slot-name { font-size: 9px; color: #6b7280; font-weight: 700; text-transform: uppercase; margin-bottom: 2px; }
+.gear-item-name { font-size: 11px; font-weight: 700; margin: 2px 0; }
+.gear-score { font-size: 10px; color: #6b7280; }
+.gear-rarity-badge { display: inline-block; font-size: 8px; font-weight: 800; padding: 1px 5px; border-radius: 3px; margin-bottom: 2px; }
+.badge-C { background: #374151; color: #9ca3af; }
+.badge-U { background: #064e3b; color: #34d399; }
+.badge-R { background: #1e3a5f; color: #60a5fa; }
+.badge-E { background: #3b1f5f; color: #c084fc; }
+.badge-L { background: #5f2a0f; color: #fb923c; }
+
+/* Tabs (mid panel) */
+.tabs { display: flex; gap: 2px; margin-bottom: 10px; flex-wrap: wrap; }
+.tab { padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 700; color: #6b7280; background: #1e1e36; }
+.tab:hover { color: #e0e0f0; }
+.tab.active { background: #7c3aed; color: #fff; }
+
+/* Drop log */
+.drop-card { background: #1e1e36; border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; }
+.drop-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+.drop-card-name { font-size: 12px; font-weight: 700; }
+.drop-card-sub { font-size: 10px; color: #6b7280; margin-top: 1px; }
+.drop-badge { font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
+.badge-new     { background: #064e3b; color: #34d399; }
+.badge-upgrade { background: #1e3a5f; color: #60a5fa; }
+.badge-sell    { background: #374151; color: #6b7280; }
+.badge-mob     { background: #1e3a5f; color: #34d399; font-size: 8px; }
+.badge-boss    { background: #3b1f5f; color: #c084fc; font-size: 8px; }
+.badge-final   { background: #5f2a0f; color: #fbbf24; font-size: 8px; }
+
+/* Stats panel */
+.stat-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 11px; }
+.stat-val { font-weight: 700; color: #a78bfa; }
+.rarity-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
+.rarity-seg { height: 100%; }
+
+/* Prob editor */
+.prob-table { width: 100%; font-size: 10px; border-collapse: collapse; }
+.prob-table th { color: #6b7280; font-weight: 700; padding: 3px 4px; text-align: center; }
+.prob-table td { padding: 2px 3px; }
+.prob-table input { width: 40px; background: #1e1e36; border: 1px solid #374151; color: #e0e0f0; border-radius: 3px; padding: 2px 4px; font-size: 10px; text-align: center; }
+
+/* Rarity Downgrade Overlay */
+.rd-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+.rd-modal { background: #1e1e36; border: 1px solid #7c3aed; border-radius: 14px; padding: 20px; width: 420px; max-width: 95vw; }
+.rd-title { font-size: 13px; font-weight: 800; color: #a78bfa; margin-bottom: 12px; text-align: center; }
+.rd-items { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.rd-item { background: #0f0f1a; border-radius: 8px; padding: 10px; }
+.rd-item-label { font-size: 9px; color: #6b7280; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
+.rd-item-name { font-size: 12px; font-weight: 800; margin-bottom: 2px; word-break: break-word; }
+.rd-item-lv { font-size: 10px; color: #9ca3af; margin-bottom: 3px; }
+.rd-item-score { font-size: 14px; font-weight: 800; margin-bottom: 4px; }
+.rd-note { font-size: 11px; color: #9ca3af; margin-bottom: 14px; text-align: center; line-height: 1.5; }
+.rd-btns { display: flex; gap: 10px; justify-content: center; }
+.rd-btns .btn { flex: 1; max-width: 140px; padding: 9px 0; font-size: 13px; }
+
+/* Item Stats tab */
+.is-table-wrap { overflow-x: auto; }
+/* Wave progress grid */
+.wave-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:3px; margin-bottom:10px; }
+.wave-cell { height:20px; border-radius:3px; position:relative; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:800; transition:all 0.15s; cursor:default; }
+.wave-cell.wc-mob-done    { background:#1e3a5f; color:#34d399; }
+.wave-cell.wc-boss-done   { background:#3b1f5f; color:#c084fc; }
+.wave-cell.wc-skip-done   { background:#1f2937; color:#4b5563; }
+.wave-cell.wc-mob-cur     { background:#2563eb; color:#fff; box-shadow:0 0 7px #60a5fa88; }
+.wave-cell.wc-boss-cur    { background:#7c3aed; color:#fff; box-shadow:0 0 7px #a78bfa88; }
+.wave-cell.wc-mob-next    { background:#0f172a; color:#1e3a5f; border:1px solid #1e3a5f44; }
+.wave-cell.wc-boss-next   { background:#0f0f1a; color:#1e1e36; border:1px solid #3b1f5f44; }
+.wave-cell.wc-skip-next   { background:#0a0a12; color:#111827; }
+.wave-cell-num { position:absolute; top:1px; left:3px; font-size:7px; opacity:0.5; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ══ LEFT PANEL ══ -->
+<div class="panel panel-left">
+  <div class="app-title">🌙 NATV Drop Simulator</div>
+
+  <div class="section-label">Chapter</div>
+  <div class="ch-control">
+    <button class="btn btn-sm btn-gray" onclick="chChange(-1)">◀</button>
+    <span class="ch-val" id="chVal">1</span>
+    <button class="btn btn-sm btn-gray" onclick="chChange(1)">▶</button>
+    <input type="range" id="chSlider" min="1" max="24" value="1" oninput="chSet(this.value)" style="flex:1">
+  </div>
+
+  <div class="ch-info" id="chInfo"></div>
+
+  <div class="section-label">Wave Progress <span id="waveProgressLabel" style="color:#a78bfa;font-size:10px;font-weight:700"></span></div>
+  <!-- wave-grid (disabled – replaced by compact progress bars) -->
+  <!-- <div class="wave-grid" id="waveGrid"></div> -->
+  <div id="waveProgress" style="margin-bottom:10px"></div>
+
+  <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+    <button class="btn btn-blue" id="btnNextWave" onclick="doNextWave()" style="font-size:13px;padding:9px 14px">⚔️ MOB 1/6</button>
+    <button class="btn btn-green" onclick="runAll()">▶▶ Chạy hết chapter</button>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-gray btn-sm" onclick="resetChapter()" style="flex:1">↺ Reset Ch</button>
+      <button class="btn btn-red btn-sm" onclick="resetAll()" style="flex:1">↺ All</button>
+    </div>
+  </div>
+
+  <div class="section-label">Trang Bị Hiện Tại</div>
+  <div class="gear-grid" id="gearGrid"></div>
+</div>
+
+<!-- ══ MID PANEL ══ -->
+<div class="panel panel-mid">
+  <div class="tabs">
+    <div class="tab active" onclick="setTab('log',this)">📜 Drop Log</div>
+    <div class="tab" onclick="setTab('stats',this)">📊 Thống Kê</div>
+    <div class="tab" onclick="setTab('rarity',this)">⭐ Rarity List</div>
+    <div class="tab" onclick="setTab('prob',this)">🎲 Xác Suất</div>
+    <div class="tab" onclick="setTab('itemstats',this)">📋 Item Stats</div>
+  </div>
+
+  <!-- Log tab -->
+  <div id="tab-log">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div class="section-label" style="margin:0">Lịch sử drop</div>
+      <button class="btn btn-sm btn-gray" onclick="clearLog()">Xóa log</button>
+    </div>
+    <div id="logContent"></div>
+  </div>
+
+  <!-- Stats tab -->
+  <div id="tab-stats" style="display:none">
+    <div class="section-label">Thống kê tổng hợp</div>
+    <div id="statsContent"></div>
+  </div>
+
+  <!-- Rarity List tab -->
+  <div id="tab-rarity" style="display:none">
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
+      <select id="raritySlotFilter" onchange="renderRarityList()" style="background:#1e1e36;border:1px solid #374151;color:#e0e0f0;border-radius:4px;padding:3px 6px;font-size:11px">
+        <option value="all">Tất cả slot</option>
+      </select>
+      <select id="rarityFilter" onchange="renderRarityList()" style="background:#1e1e36;border:1px solid #374151;color:#e0e0f0;border-radius:4px;padding:3px 6px;font-size:11px">
+        <option value="all">Tất cả rarity</option>
+        <option value="Common">Common</option>
+        <option value="Uncommon">Uncommon</option>
+        <option value="Rare">Rare</option>
+        <option value="Epic">Epic</option>
+        <option value="Legendary">Legendary</option>
+      </select>
+    </div>
+    <div id="rarityListContent"></div>
+  </div>
+
+  <!-- Prob editor tab -->
+  <div id="tab-prob" style="display:none">
+    <div class="section-label">Xác Suất Drop (tổng mỗi hàng = 100%)</div>
+    <p style="font-size:10px;color:#6b7280;margin-bottom:8px">Mob Wave: % Epic+Legendary dồn vào Rare. Boss cuối chapter: dùng xác suất nhóm tiếp theo.</p>
+    <div id="probEditor"></div>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button class="btn btn-sm btn-purple" onclick="saveProb()">Lưu</button>
+      <button class="btn btn-sm btn-gray" onclick="resetProb()">Reset mặc định</button>
+    </div>
+    <div id="probErr" style="color:#f87171;font-size:10px;margin-top:4px"></div>
+  </div>
+
+  <!-- Item Stats tab -->
+  <div id="tab-itemstats" style="display:none">
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
+      <select id="isSlotFilter" onchange="renderItemStats()" style="background:#1e1e36;border:1px solid #374151;color:#e0e0f0;border-radius:4px;padding:3px 6px;font-size:11px">
+        <option value="all">Tất cả slot</option>
+      </select>
+      <select id="isRarityFilter" onchange="renderItemStats()" style="background:#1e1e36;border:1px solid #374151;color:#e0e0f0;border-radius:4px;padding:3px 6px;font-size:11px">
+        <option value="all">Tất cả rarity</option>
+        <option value="Common">Common</option>
+        <option value="Uncommon">Uncommon</option>
+        <option value="Rare">Rare</option>
+        <option value="Epic">Epic</option>
+        <option value="Legendary">Legendary</option>
+      </select>
+    </div>
+    <div id="itemStatsContent" class="is-table-wrap"></div>
+  </div>
+</div>
+
+<!-- ══ RIGHT PANEL ══ -->
+<div class="panel panel-right">
+  <div class="app-title">📊 Tiến Trình</div>
+  <div id="rightInfo"></div>
+</div>
+
+</div>
+
+<!-- ══ RARITY DOWNGRADE OVERLAY ══ -->
+<div class="rd-overlay" id="rdOverlay" style="display:none">
+  <div class="rd-modal">
+    <div class="rd-title">⚠️ Hướng B — Rarity thấp hơn</div>
+    <div class="rd-items">
+      <div class="rd-item" id="rdNew"></div>
+      <div class="rd-item" id="rdOld"></div>
+    </div>
+    <div class="rd-note" id="rdNote"></div>
+    <div class="rd-btns">
+      <button class="btn btn-green" onclick="rdDecide(true)">✓ Trang bị</button>
+      <button class="btn btn-gray" onclick="rdDecide(false)">✕ Bán</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════════
+const RARITIES = ['Common','Uncommon','Rare','Epic','Legendary'];
+const RARITY_COLOR = {Common:'#9ca3af',Uncommon:'#34d399',Rare:'#60a5fa',Epic:'#c084fc',Legendary:'#fb923c'};
+const RARITY_BG    = {Common:'bg-common',Uncommon:'bg-uncommon',Rare:'bg-rare',Epic:'bg-epic',Legendary:'bg-legendary'};
+const RARITY_SHORT = {Common:'C',Uncommon:'U',Rare:'R',Epic:'E',Legendary:'L'};
+const SCORE_MULT   = {Common:1.0,Uncommon:1.35,Rare:1.80,Epic:2.40,Legendary:3.20};
+
+const SLOTS = [
+  { id:'weapon',   vi:'Súng',       icon:'🔫' },
+  { id:'armor',    vi:'Áo Giáp',    icon:'🛡️' },
+  { id:'glove',    vi:'Găng Tay',   icon:'🧤' },
+  { id:'feet',     vi:'Giày',       icon:'👟' },
+  { id:'hat',      vi:'Mũ',         icon:'🎩' },
+  { id:'ring',     vi:'Nhẫn',       icon:'💍' },
+  { id:'necklace', vi:'Dây Chuyền', icon:'📿' },
+  { id:'waist',    vi:'Thắt Lưng',  icon:'🪢' },
+];
+
+const SLOT_STAT_LABELS = {
+  weapon:   {s1:'DMG',       s2:'ATK SPD'},
+  armor:    {s1:'HP',        s2:'HP REGEN'},
+  glove:    {s1:'DMG',       s2:'ATK SPD'},
+  feet:     {s1:'HP',        s2:'HP REGEN'},
+  hat:      {s1:'HP',        s2:'CRIT DMG'},
+  ring:     {s1:'DMG',       s2:'CRIT RATE'},
+  necklace: {s1:'DMG',       s2:'ATK SPD'},
+  waist:    {s1:'HP',        s2:'HP REGEN'},
+};
+
+// ── Drop rate per chapter group (8 groups × 3 chapters each) ──────────────
+// [Common, Uncommon, Rare, Epic, Legendary] — sums to 100
+const DEFAULT_PROB = [
+  [ 89,  10,   1,   0,   0 ], // Ch 1–3
+  [ 66,  25,   8,   1,   0 ], // Ch 4–6
+  [ 47.9,35,  12,   5,   0.1], // Ch 7–9
+  [ 29.5,42,  18,  10,   0.5], // Ch 10–12
+  [ 11.9,46,  25,  15,   2.1], // Ch 13–15
+  [  3.5,40,  32,  20,   4.5], // Ch 16–18
+  [  0,  28.2,40,  23,   8.8], // Ch 19–21
+  [  0,  20,  43,  28,   9  ], // Ch 22–24
+];
+let DROP_RATES = DEFAULT_PROB.map(r => [...r]);
+
+function probGroup(ch) { return Math.min(Math.floor((ch-1)/3), 7); }
+
+// ═══════════════════════════════════════════════════════
+//  ITEM POOLS (66 items per slot)
+// ═══════════════════════════════════════════════════════
+const MATERIALS = {
+  weapon: [
+    'Nerf Ball Gun','Battery Discharger','Gatling Gun','Dart Gun','Water Gun',
+    'Laser Gun','Flamethrower','Slime Gun','Cork Gun','Pellet Pistol',
+    'Marble Launcher','Slingshot Pistol','Rubber Slug Gun','Pebble Repeater','Spike Pistol',
+    'Splatter Gun','Air Cannon','Spring Launcher','Rivet Gun','Nail Driver',
+    'Splinter Rifle','Spark Pistol','Resin Gun','Bone Pistol','Ghost Revolver',
+    'Tombstone Repeater','Hex Pistol','Phantom Rifle','Coffin Nail Gun','Banshee Cannon',
+    'Grave Iron Cannon','Ecto Blaster','Shadow Bolt Gun','Wraith Carbine','Soulfire Pistol',
+    'Dread Cannon','Cursed Flintlock','Thorn Shooter','Spore Cannon','Venom Rifle',
+    'Vine Launcher','Poison Dart Gun','Briar Blaster','Miasma Sprayer','Stinger Rifle',
+    'Bog Cannon','Coral Carbine','Sap Rifle','Fang Repeater','Junk Cannon',
+    'Boomstick','Sparkfire Pistol','Grease Cannon','Cogwheel Launcher','Junkfire Pistol',
+    'Dynamite Pistol','Scrapshot Blaster','Rattletrap Rifle','Coal Spitter','Shrapnel Launcher',
+    'Pressure Cannon','Smoke Stack Rifle','Furnace Gun','Plasma Pistol','Photon Blaster','Gravity Gun',
+  ],
+  armor: [
+    'Light Armor','Adventurer\'s Shirt','Army Shirt','Leather Jacket','Letterman Jacket',
+    'Bulletproof Vest','Full Metal Suit','Protective Armor','Cotton Tunic','Linen Vest',
+    'Patchwork Shirt','Canvas Jacket','Wool Coat','Denim Vest','Flannel Jacket',
+    'Quilted Vest','Burlap Tunic','Work Overalls','Padded Vest','Raincoat',
+    'Carpenter Apron','Stitched Jerkin','Rubber Coat','Gravecloth Wrap','Phantom Shroud',
+    'Bone Plate Armor','Hex-Warded Vest','Tombstone Chestplate','Spirit Mail','Deathwood Plate',
+    'Wraith Cloak','Banshee-Hide Vest','Crypt Iron Breastplate','Cursed Leather Coat','Nightshade Cloak',
+    'Soulbound Vest','Revenant Plate','Darkfire Mantle','Deathbell Hauberk','Moonlit Mail',
+    'Bark Armor','Vine-Woven Vest','Moss Cloak','Thorn Plate','Fungal Hide',
+    'Swamp Leather Vest','Reed-Weave Tunic','Ironwood Breastplate','Serpent Scale Vest','Coral Chestplate',
+    'Amber-Coated Jacket','Petrified Bark Plate','Turtle Shell Guard','Bramble Mail','Mangrove Root Plate',
+    'Spore-Guard Vest','Leech-Hide Jacket','Scrap Metal Vest','Tin Can Armor','Boiler Plate',
+    'Gear-Plated Jacket','Smokesteel Vest','Rivet Mail','Furnace Guard','Chain Link Vest','Piston-Braced Plate',
+  ],
+  glove: [
+    'Cloth Gloves','Gym Gloves','Leather Gloves','Studded Gloves','Brass Knuckles',
+    'Light Metal Gloves','Gauntlet','Metal Gloves','Cotton Wraps','Fingerless Gloves',
+    'Wool Mitts','Canvas Grips','Denim Gloves','Rubber Grips','Padded Mitts',
+    'Work Gloves','Cord-Wrapped Fists','Burlap Wraps','Hide Gloves','Resin-Coated Grips',
+    'Suede Gloves','Carpenter Grips','Twine Wraps','Bone Knuckles','Ghost Wraps',
+    'Tombstone Fists','Hex Gauntlets','Phantom Grips','Coffin Iron Fists','Banshee Wraps',
+    'Grave Iron Gauntlets','Shadow Grips','Wraith Knuckles','Soulfire Gauntlets','Cursed Mitts',
+    'Crypt Iron Fists','Nightshade Gloves','Darkfire Gauntlets','Moonlit Wraps','Dread Fists',
+    'Bark Gauntlets','Vine Wraps','Thorn Knuckles','Moss-Padded Gloves','Fungal Grips',
+    'Serpent Scale Fists','Coral Gauntlets','Amber-Coated Fists','Bramble Wraps','Reed-Woven Gloves',
+    'Stinger Knuckles','Bog Iron Fists','Petrified Wood Grips','Mangrove Gauntlets','Leech-Hide Gloves',
+    'Spore Fists','Turtle Shell Knuckles','Scrap Metal Fists','Rivet Gauntlets','Gear-Plated Gloves',
+    'Wrench Knuckles','Piston Gauntlets','Spark Plug Fists','Coal Ember Grips','Chain Link Gloves','Furnace Gauntlets',
+  ],
+  feet: [
+    'Slippers','Leather Shoes','Sneakers','Army Boots','Sturdy Boots',
+    'Light Metal Boots','Iron Toes','Metal Boots','Canvas Boots','Denim Treads',
+    'Linen Wraps','Patchwork Boots','Rubber Stompers','Bark Treads','Woodsole Boots',
+    'Quilted Wraps','Cobbler Boots','Hide Stompers','Villager Treads','Twine-Laced Boots',
+    'Roughspun Wraps','Tanner Boots','Rawhide Treads','Hardwood Sabatons','Homestead Boots',
+    'Reed Wraps','Fieldwork Boots','Rope-Bound Treads','Gravewalker Boots','Bone Treads',
+    'Tombstone Greaves','Phantom Boots','Spectral Wraps','Grave Iron Sabatons','Shade Treads',
+    'Coffin Nail Boots','Wraith Stompers','Hollow Greaves','Dusk Boots','Spirit Treads',
+    'Crypt Sabatons','Wailing Wraps','Nightshade Boots','Cursed Step Greaves','Revenant Treads',
+    'Deathchill Boots','Soul Greaves','Gallows Stompers','Mossclad Boots','Vinebound Wraps',
+    'Fungal Treads','Bogwalker Boots','Thornstep Greaves','Resin Stompers','Serpent Scale Boots',
+    'Swamp Root Treads','Lily Pad Wraps','Briar Boots','Amber Sabatons','Frog Skin Boots',
+    'Mangrove Greaves','Toadstool Treads','Venom Wraps','Wildroot Boots','Scale-Tipped Boots','Marsh Stompers',
+  ],
+  hat: [
+    'Straw Cap','Cotton Hood','Linen Headband','Leather Cap','Burlap Hood',
+    'Woodsman Helm','Tin Cap','Patchwork Hood','Canvas Headband','Hide Helm',
+    'Wicker Cap','Cork Helm','Rope Headband','Cobbler Cap','Denim Hood',
+    'Tanner Helm','Rawhide Cap','Reed Headband','Fieldwork Hood','Copper Band Helm',
+    'Thatch Cap','Villager Headband','Homestead Helm','Gravedigger Helm','Bone Crown',
+    'Phantom Hood','Tombstone Helm','Spectral Headband','Coffin Lid Cap','Shade Visor',
+    'Wraith Crown','Crypt Mask','Grave Iron Helm','Dusk Hood','Spirit Crown',
+    'Deathchill Visor','Banshee Mask','Hollow Helm','Revenant Headband','Nightshade Crown',
+    'Soul Visor','Cursed Step Hood','Gallows Helm','Moss Helm','Vine Crown',
+    'Bark Visor','Fungal Cap','Thorn Crown','Bog Hood','Amber Helm',
+    'Frog Skin Cap','Mangrove Mask','Serpent Scale Hood','Briar Headband','Swamp Root Helm',
+    'Lily Pad Cap','Resin Visor','Spore Mask','Creeper Hood','Toadstool Helm',
+    'Venom Crown','Scale Cap','Wildroot Headband','Barkskin Cap','Gear Helm','Steam Vent Hood',
+  ],
+  ring: [
+    'Tin Ring','Copper Band','Pebble Ring','Wooden Loop','Thread Ring',
+    'Cork Band','Leather Loop','Brass Ring','Iron Band','Penny Ring',
+    'Twig Circlet','Button Band','Nail Ring','Wax Seal Ring','Hemp Loop',
+    'Rivet Band','Spool Ring','Clothespin Band','Acorn Ring','Chalk Ring',
+    'Slate Band','Thimble Ring','Flint Signet','Grave Dust Ring','Bone Band',
+    'Phantom Loop','Coffin Wood Ring','Tombseal Signet','Crypt Iron Band','Shadow Ring',
+    'Spectral Seal','Gravekeeper Ring','Hollow Bone Ring','Dusk Signet','Revenant Band',
+    'Wraith Loop','Nightshade Ring','Coffin Nail Band','Soul Ember Ring','Death Knell Band',
+    'Ghoul Bone Loop','Cursed Signet','Banshee Ring','Moss Ring','Vine Loop',
+    'Thorn Band','Amber Ring','Root Signet','Serpent Scale Band','Fungal Ring',
+    'Swamp Resin Loop','Briar Band','Coral Ring','Lily Seal','Frog Eye Ring',
+    'Marsh Gas Band','Venom Loop','Bark Signet','Spore Ring','Scale Band',
+    'Bog Iron Ring','Mangrove Loop','Pitcher Plant Seal','Creeper Loop','Gear Ring','Bolt Band',
+  ],
+  necklace: [
+    'Scarf','Army Dog Tag','Pendant','Gold Chain','Emerald Gem',
+    'Lucky Charm','Diamond Band','Metal Collar','Cord Necklace','Wooden Pendant',
+    'Bead Necklace','Leather Choker','Copper Pendant','Shell Necklace','Button Chain',
+    'Hemp Choker','Glass Bead Strand','Tin Locket','Bolt Necklace','Stone Pendant',
+    'Wire Choker','Feather Necklace','Coin Pendant','Brass Tag','Leather Medallion',
+    'Bone Charm','Ghost Locket','Tombstone Shard','Hex Amulet','Phantom Chain',
+    'Coffin Nail Pendant','Banshee Tooth','Grave Iron Collar','Wraith Pendant','Soulfire Amulet',
+    'Shadow Medallion','Cursed Locket','Dread Torc','Darkfire Pendant','Nightshade Choker',
+    'Blight Amulet','Crypt Chain','Moonlit Pendant','Thorn Choker','Spore Pendant',
+    'Venom Fang Necklace','Moss Amulet','Amber Pendant','Bark Medallion','Coral Choker',
+    'Serpent Scale Pendant','Vine Torc','Fungal Charm','Resin Locket','Bramble Chain',
+    'Stinger Pendant','Bog Iron Torc','Leech Stone Amulet','Petrified Fang','Gear Pendant',
+    'Spark Plug Charm','Bolt Chain','Scrap Medal','Rivet Collar','Coal Ember Pendant','Furnace Chain',
+  ],
+  waist: [
+    'Cloth Sash','Army Belt','Leather Belt','Lucky Belt','Poison Belt',
+    'Dairy Cow Belt','Assassin Belt','Metal Belt','Cotton Sash','Rope Belt',
+    'Twine Cord','Canvas Belt','Wool Sash','Denim Strap','Burlap Cord',
+    'Hide Belt','Flannel Sash','Padded Belt','Rubber Strap','Woven Cord',
+    'Suede Belt','Carpenter Strap','Quilted Sash','Bone Chain Belt','Ghost Sash',
+    'Tombstone Girdle','Hex-Warded Belt','Phantom Cord','Coffin Iron Belt','Banshee Sash',
+    'Grave Iron Chain','Shadow Strap','Wraith Cord','Soulfire Belt','Cursed Cinch',
+    'Crypt Iron Girdle','Nightshade Sash','Darkfire Belt','Moonlit Cord','Dread Girdle',
+    'Bark Belt','Vine Cord','Thorn Strap','Moss Sash','Fungal Belt',
+    'Serpent Scale Girdle','Coral Belt','Amber Cinch','Bramble Cord','Reed-Woven Belt',
+    'Bog Iron Girdle','Mangrove Strap','Leech-Hide Belt','Spore Sash','Turtle Shell Girdle',
+    'Ironwood Belt','Petrified Bark Strap','Scrap Chain Belt','Tin Can Girdle','Boiler Strap',
+    'Gear Belt','Rivet Chain','Furnace Girdle','Piston Belt','Wrench Strap','Smokesteel Cinch',
+  ],
+};
+
+// Score formula: base grows 1.55× per chapter, items within chapter spaced +5%
+function chBase(ch) { return 10 * Math.pow(1.55, ch - 1); }
+
+function buildPool(slotId) {
+  const mats = MATERIALS[slotId]; // 66 names
+  const n = mats.length;          // 66
+  // First item index per chapter
+  const chStart = {};
+  for (let i = 0; i < n; i++) {
+    const ch = Math.floor(i * 24 / n) + 1;
+    if (chStart[ch] === undefined) chStart[ch] = i;
+  }
+  return Array.from({length: n}, (_, i) => {
+    const ch   = Math.floor(i * 24 / n) + 1;
+    const intra = i - chStart[ch];
+    const base  = chBase(ch) * (1 + intra * 0.05);
+    return { idx: i, id: `${slotId}_${String(i).padStart(2,'0')}`, name: mats[i], chapter: ch, baseScore: base };
+  });
+}
+
+const ITEM_POOLS = {};
+SLOTS.forEach(sl => { ITEM_POOLS[sl.id] = buildPool(sl.id); });
+
+const CH_ITEMS = {};
+SLOTS.forEach(sl => {
+  CH_ITEMS[sl.id] = {};
+  for (let ch = 1; ch <= 24; ch++)
+    CH_ITEMS[sl.id][ch] = ITEM_POOLS[sl.id].filter(it => it.chapter === ch);
+});
+
+function calcScore(item, rarity) { return item.baseScore * SCORE_MULT[rarity]; }
+function fmt(n) { return Number(n).toFixed(1); }
+
+// ═══════════════════════════════════════════════════════
+//  ITEM DATA (from CSV)
+// ═══════════════════════════════════════════════════════
+const ITEM_STATS = {
+  weapon: {
+    0:{C:{s1:"8.00%",s2:""},U:{s1:"8.80%",s2:""},R:{s1:"9.76%",s2:""},E:{s1:"10.88%",s2:""},L:{s1:"12.16%",s2:""}},
+    1:{C:{s1:"8.50%",s2:""},U:{s1:"9.35%",s2:""},R:{s1:"10.37%",s2:""},E:{s1:"11.56%",s2:""},L:{s1:"12.92%",s2:""}},
+    2:{C:{s1:"9.00%",s2:""},U:{s1:"9.90%",s2:""},R:{s1:"10.98%",s2:""},E:{s1:"12.24%",s2:""},L:{s1:"13.68%",s2:""}},
+    3:{C:{s1:"9.50%",s2:""},U:{s1:"10.45%",s2:""},R:{s1:"11.59%",s2:""},E:{s1:"12.92%",s2:""},L:{s1:"14.44%",s2:""}},
+    4:{C:{s1:"10.00%",s2:""},U:{s1:"11.00%",s2:""},R:{s1:"12.20%",s2:""},E:{s1:"13.60%",s2:""},L:{s1:"15.20%",s2:""}},
+    5:{C:{s1:"10.50%",s2:""},U:{s1:"11.55%",s2:""},R:{s1:"12.81%",s2:""},E:{s1:"14.28%",s2:""},L:{s1:"15.96%",s2:""}},
+    6:{C:{s1:"11.00%",s2:""},U:{s1:"12.10%",s2:""},R:{s1:"13.42%",s2:""},E:{s1:"14.96%",s2:""},L:{s1:"16.72%",s2:""}},
+    7:{C:{s1:"11.50%",s2:""},U:{s1:"12.65%",s2:""},R:{s1:"14.03%",s2:""},E:{s1:"15.64%",s2:""},L:{s1:"17.48%",s2:""}},
+    8:{C:{s1:"12.00%",s2:""},U:{s1:"13.20%",s2:""},R:{s1:"14.64%",s2:""},E:{s1:"16.32%",s2:""},L:{s1:"18.24%",s2:""}},
+    9:{C:{s1:"12.50%",s2:""},U:{s1:"13.75%",s2:""},R:{s1:"15.25%",s2:""},E:{s1:"17.00%",s2:""},L:{s1:"19.00%",s2:""}},
+    10:{C:{s1:"13.00%",s2:""},U:{s1:"14.30%",s2:""},R:{s1:"15.86%",s2:""},E:{s1:"17.68%",s2:""},L:{s1:"19.76%",s2:""}},
+    11:{C:{s1:"13.50%",s2:""},U:{s1:"14.85%",s2:""},R:{s1:"16.47%",s2:""},E:{s1:"18.36%",s2:""},L:{s1:"20.52%",s2:""}},
+    12:{C:{s1:"14.00%",s2:""},U:{s1:"15.40%",s2:""},R:{s1:"17.08%",s2:""},E:{s1:"19.04%",s2:""},L:{s1:"21.28%",s2:""}},
+    13:{C:{s1:"14.50%",s2:""},U:{s1:"15.95%",s2:""},R:{s1:"17.69%",s2:""},E:{s1:"19.72%",s2:""},L:{s1:"22.04%",s2:""}},
+    14:{C:{s1:"15.00%",s2:""},U:{s1:"16.50%",s2:""},R:{s1:"18.30%",s2:""},E:{s1:"20.40%",s2:""},L:{s1:"22.80%",s2:""}},
+    15:{C:{s1:"15.50%",s2:""},U:{s1:"17.05%",s2:""},R:{s1:"18.91%",s2:""},E:{s1:"21.08%",s2:""},L:{s1:"23.56%",s2:""}},
+    16:{C:{s1:"16.25%",s2:""},U:{s1:"17.88%",s2:""},R:{s1:"19.82%",s2:""},E:{s1:"22.10%",s2:""},L:{s1:"24.70%",s2:""}},
+    17:{C:{s1:"17.00%",s2:""},U:{s1:"18.70%",s2:""},R:{s1:"20.74%",s2:""},E:{s1:"23.12%",s2:""},L:{s1:"25.84%",s2:""}},
+    18:{C:{s1:"17.75%",s2:""},U:{s1:"19.53%",s2:""},R:{s1:"21.66%",s2:""},E:{s1:"24.14%",s2:""},L:{s1:"26.98%",s2:""}},
+    19:{C:{s1:"18.50%",s2:""},U:{s1:"20.35%",s2:""},R:{s1:"22.57%",s2:""},E:{s1:"25.16%",s2:""},L:{s1:"28.12%",s2:""}},
+    20:{C:{s1:"19.25%",s2:""},U:{s1:"21.18%",s2:""},R:{s1:"23.48%",s2:""},E:{s1:"26.18%",s2:""},L:{s1:"29.26%",s2:""}},
+    21:{C:{s1:"20.00%",s2:""},U:{s1:"22.00%",s2:""},R:{s1:"24.40%",s2:""},E:{s1:"27.20%",s2:""},L:{s1:"30.40%",s2:""}},
+    22:{C:{s1:"20.75%",s2:""},U:{s1:"22.83%",s2:""},R:{s1:"25.31%",s2:""},E:{s1:"28.22%",s2:""},L:{s1:"31.54%",s2:""}},
+    23:{C:{s1:"21.50%",s2:""},U:{s1:"23.65%",s2:""},R:{s1:"26.23%",s2:""},E:{s1:"29.24%",s2:""},L:{s1:"32.68%",s2:""}},
+    24:{C:{s1:"22.25%",s2:""},U:{s1:"24.48%",s2:""},R:{s1:"27.14%",s2:"2.80%"},E:{s1:"30.26%",s2:"3.12%"},L:{s1:"33.82%",s2:"3.49%"}},
+    25:{C:{s1:"23.00%",s2:""},U:{s1:"25.30%",s2:""},R:{s1:"28.06%",s2:"3.21%"},E:{s1:"31.28%",s2:"3.58%"},L:{s1:"34.96%",s2:"4.00%"}},
+    26:{C:{s1:"23.75%",s2:""},U:{s1:"26.13%",s2:""},R:{s1:"28.97%",s2:"3.62%"},E:{s1:"32.30%",s2:"4.04%"},L:{s1:"36.10%",s2:"4.51%"}},
+    27:{C:{s1:"24.50%",s2:""},U:{s1:"26.95%",s2:""},R:{s1:"29.89%",s2:"4.03%"},E:{s1:"33.32%",s2:"4.49%"},L:{s1:"37.24%",s2:"5.02%"}},
+    28:{C:{s1:"25.25%",s2:""},U:{s1:"27.78%",s2:""},R:{s1:"30.80%",s2:"4.44%"},E:{s1:"34.34%",s2:"4.95%"},L:{s1:"38.38%",s2:"5.54%"}},
+    29:{C:{s1:"26.00%",s2:""},U:{s1:"28.60%",s2:""},R:{s1:"31.72%",s2:"4.85%"},E:{s1:"35.36%",s2:"5.41%"},L:{s1:"39.52%",s2:"6.05%"}},
+    30:{C:{s1:"26.75%",s2:""},U:{s1:"29.43%",s2:""},R:{s1:"32.63%",s2:"5.26%"},E:{s1:"36.38%",s2:"5.87%"},L:{s1:"40.66%",s2:"6.56%"}},
+    31:{C:{s1:"27.50%",s2:""},U:{s1:"30.25%",s2:""},R:{s1:"33.55%",s2:"5.68%"},E:{s1:"37.40%",s2:"6.33%"},L:{s1:"41.80%",s2:"7.07%"}},
+    32:{C:{s1:"28.25%",s2:""},U:{s1:"31.08%",s2:""},R:{s1:"34.46%",s2:"6.09%"},E:{s1:"38.42%",s2:"6.78%"},L:{s1:"42.94%",s2:"7.58%"}},
+    33:{C:{s1:"29.00%",s2:""},U:{s1:"31.90%",s2:""},R:{s1:"35.38%",s2:"6.50%"},E:{s1:"39.44%",s2:"7.24%"},L:{s1:"44.08%",s2:"8.09%"}},
+    34:{C:{s1:"29.75%",s2:""},U:{s1:"32.73%",s2:""},R:{s1:"36.30%",s2:"6.91%"},E:{s1:"40.46%",s2:"7.70%"},L:{s1:"45.22%",s2:"8.61%"}},
+    35:{C:{s1:"30.50%",s2:""},U:{s1:"33.55%",s2:""},R:{s1:"37.21%",s2:"7.32%"},E:{s1:"41.48%",s2:"8.16%"},L:{s1:"46.36%",s2:"9.12%"}},
+    36:{C:{s1:"31.25%",s2:""},U:{s1:"34.38%",s2:""},R:{s1:"38.12%",s2:"7.73%"},E:{s1:"42.50%",s2:"8.62%"},L:{s1:"47.50%",s2:"9.63%"}},
+    37:{C:{s1:"32.00%",s2:""},U:{s1:"35.20%",s2:""},R:{s1:"39.04%",s2:"8.14%"},E:{s1:"43.52%",s2:"9.07%"},L:{s1:"48.64%",s2:"10.14%"}},
+    38:{C:{s1:"32.75%",s2:""},U:{s1:"36.03%",s2:""},R:{s1:"39.95%",s2:"8.55%"},E:{s1:"44.54%",s2:"9.53%"},L:{s1:"49.78%",s2:"10.65%"}},
+    39:{C:{s1:"33.50%",s2:""},U:{s1:"36.85%",s2:""},R:{s1:"40.87%",s2:"8.96%"},E:{s1:"45.56%",s2:"9.99%"},L:{s1:"50.92%",s2:"11.16%"}},
+    40:{C:{s1:"34.25%",s2:""},U:{s1:"37.68%",s2:""},R:{s1:"41.78%",s2:"9.37%"},E:{s1:"46.58%",s2:"10.45%"},L:{s1:"52.06%",s2:"11.68%"}},
+    41:{C:{s1:"35.25%",s2:""},U:{s1:"38.78%",s2:""},R:{s1:"43.01%",s2:"9.78%"},E:{s1:"47.94%",s2:"10.91%"},L:{s1:"53.58%",s2:"12.19%"}},
+    42:{C:{s1:"36.25%",s2:""},U:{s1:"39.88%",s2:""},R:{s1:"44.23%",s2:"10.19%"},E:{s1:"49.30%",s2:"11.36%"},L:{s1:"55.10%",s2:"12.70%"}},
+    43:{C:{s1:"37.25%",s2:""},U:{s1:"40.98%",s2:""},R:{s1:"45.45%",s2:"10.60%"},E:{s1:"50.66%",s2:"11.82%"},L:{s1:"56.62%",s2:"13.21%"}},
+    44:{C:{s1:"38.25%",s2:""},U:{s1:"42.08%",s2:""},R:{s1:"46.66%",s2:"11.01%"},E:{s1:"52.02%",s2:"12.28%"},L:{s1:"58.14%",s2:"13.72%"}},
+    45:{C:{s1:"39.25%",s2:""},U:{s1:"43.18%",s2:""},R:{s1:"47.88%",s2:"11.43%"},E:{s1:"53.38%",s2:"12.74%"},L:{s1:"59.66%",s2:"14.23%"}},
+    46:{C:{s1:"40.25%",s2:""},U:{s1:"44.28%",s2:""},R:{s1:"49.10%",s2:"11.84%"},E:{s1:"54.74%",s2:"13.19%"},L:{s1:"61.18%",s2:"14.75%"}},
+    47:{C:{s1:"41.25%",s2:""},U:{s1:"45.38%",s2:""},R:{s1:"50.32%",s2:"12.25%"},E:{s1:"56.10%",s2:"13.65%"},L:{s1:"62.70%",s2:"15.26%"}},
+    48:{C:{s1:"42.25%",s2:""},U:{s1:"46.48%",s2:""},R:{s1:"51.55%",s2:"12.66%"},E:{s1:"57.46%",s2:"14.11%"},L:{s1:"64.22%",s2:"15.77%"}},
+    49:{C:{s1:"43.25%",s2:""},U:{s1:"47.58%",s2:""},R:{s1:"52.77%",s2:"13.07%"},E:{s1:"58.82%",s2:"14.57%"},L:{s1:"65.74%",s2:"16.28%"}},
+    50:{C:{s1:"44.25%",s2:""},U:{s1:"48.68%",s2:""},R:{s1:"53.98%",s2:"13.48%"},E:{s1:"60.18%",s2:"15.03%"},L:{s1:"67.26%",s2:"16.79%"}},
+    51:{C:{s1:"45.25%",s2:""},U:{s1:"49.78%",s2:""},R:{s1:"55.20%",s2:"13.89%"},E:{s1:"61.54%",s2:"15.48%"},L:{s1:"68.78%",s2:"17.31%"}},
+    52:{C:{s1:"46.25%",s2:""},U:{s1:"50.88%",s2:""},R:{s1:"56.42%",s2:"14.30%"},E:{s1:"62.90%",s2:"15.94%"},L:{s1:"70.30%",s2:"17.82%"}},
+    53:{C:{s1:"47.25%",s2:""},U:{s1:"51.98%",s2:""},R:{s1:"57.64%",s2:"14.71%"},E:{s1:"64.26%",s2:"16.40%"},L:{s1:"71.82%",s2:"18.33%"}},
+    54:{C:{s1:"48.25%",s2:""},U:{s1:"53.08%",s2:""},R:{s1:"58.87%",s2:"15.12%"},E:{s1:"65.62%",s2:"16.86%"},L:{s1:"73.34%",s2:"18.84%"}},
+    55:{C:{s1:"49.25%",s2:""},U:{s1:"54.18%",s2:""},R:{s1:"60.09%",s2:"15.53%"},E:{s1:"66.98%",s2:"17.32%"},L:{s1:"74.86%",s2:"19.35%"}},
+    56:{C:{s1:"50.25%",s2:""},U:{s1:"55.28%",s2:""},R:{s1:"61.30%",s2:"15.94%"},E:{s1:"68.34%",s2:"17.77%"},L:{s1:"76.38%",s2:"19.86%"}},
+    57:{C:{s1:"51.25%",s2:""},U:{s1:"56.38%",s2:""},R:{s1:"62.52%",s2:"16.35%"},E:{s1:"69.70%",s2:"18.23%"},L:{s1:"77.90%",s2:"20.38%"}},
+    58:{C:{s1:"52.25%",s2:""},U:{s1:"57.48%",s2:""},R:{s1:"63.74%",s2:"16.76%"},E:{s1:"71.06%",s2:"18.69%"},L:{s1:"79.42%",s2:"20.89%"}},
+    59:{C:{s1:"53.25%",s2:""},U:{s1:"58.58%",s2:""},R:{s1:"64.97%",s2:"17.18%"},E:{s1:"72.42%",s2:"19.15%"},L:{s1:"80.94%",s2:"21.40%"}},
+    60:{C:{s1:"54.25%",s2:""},U:{s1:"59.68%",s2:""},R:{s1:"66.19%",s2:"17.59%"},E:{s1:"73.78%",s2:"19.60%"},L:{s1:"82.46%",s2:"21.91%"}},
+    61:{C:{s1:"55.25%",s2:""},U:{s1:"60.78%",s2:""},R:{s1:"67.41%",s2:"18.00%"},E:{s1:"75.14%",s2:"20.06%"},L:{s1:"83.98%",s2:"22.42%"}},
+    62:{C:{s1:"56.25%",s2:""},U:{s1:"61.88%",s2:""},R:{s1:"68.62%",s2:"18.41%"},E:{s1:"76.50%",s2:"20.52%"},L:{s1:"85.50%",s2:"22.93%"}},
+    63:{C:{s1:"57.25%",s2:""},U:{s1:"62.98%",s2:""},R:{s1:"69.84%",s2:"18.82%"},E:{s1:"77.86%",s2:"20.98%"},L:{s1:"87.02%",s2:"23.45%"}},
+    64:{C:{s1:"58.25%",s2:""},U:{s1:"64.08%",s2:""},R:{s1:"71.06%",s2:"19.23%"},E:{s1:"79.22%",s2:"21.44%"},L:{s1:"88.54%",s2:"23.96%"}},
+    65:{C:{s1:"59.25%",s2:""},U:{s1:"65.18%",s2:""},R:{s1:"72.28%",s2:"19.64%"},E:{s1:"80.58%",s2:"21.89%"},L:{s1:"90.06%",s2:"24.47%"}},
+  },
+  armor: {
+    0:{C:{s1:"12.00%",s2:""},U:{s1:"13.20%",s2:""},R:{s1:"14.64%",s2:""},E:{s1:"16.32%",s2:""},L:{s1:"18.24%",s2:""}},
+    1:{C:{s1:"12.75%",s2:""},U:{s1:"14.03%",s2:""},R:{s1:"15.55%",s2:""},E:{s1:"17.34%",s2:""},L:{s1:"19.38%",s2:""}},
+    2:{C:{s1:"13.50%",s2:""},U:{s1:"14.85%",s2:""},R:{s1:"16.47%",s2:""},E:{s1:"18.36%",s2:""},L:{s1:"20.52%",s2:""}},
+    3:{C:{s1:"14.25%",s2:""},U:{s1:"15.68%",s2:""},R:{s1:"17.38%",s2:""},E:{s1:"19.38%",s2:""},L:{s1:"21.66%",s2:""}},
+    4:{C:{s1:"15.00%",s2:""},U:{s1:"16.50%",s2:""},R:{s1:"18.30%",s2:""},E:{s1:"20.40%",s2:""},L:{s1:"22.80%",s2:""}},
+    5:{C:{s1:"15.75%",s2:""},U:{s1:"17.33%",s2:""},R:{s1:"19.21%",s2:""},E:{s1:"21.42%",s2:""},L:{s1:"23.94%",s2:""}},
+    6:{C:{s1:"16.50%",s2:""},U:{s1:"18.15%",s2:""},R:{s1:"20.13%",s2:""},E:{s1:"22.44%",s2:""},L:{s1:"25.08%",s2:""}},
+    7:{C:{s1:"17.25%",s2:""},U:{s1:"18.98%",s2:""},R:{s1:"21.04%",s2:""},E:{s1:"23.46%",s2:""},L:{s1:"26.22%",s2:""}},
+    8:{C:{s1:"18.00%",s2:""},U:{s1:"19.80%",s2:""},R:{s1:"21.96%",s2:""},E:{s1:"24.48%",s2:""},L:{s1:"27.36%",s2:""}},
+    9:{C:{s1:"18.75%",s2:""},U:{s1:"20.62%",s2:""},R:{s1:"22.88%",s2:""},E:{s1:"25.50%",s2:""},L:{s1:"28.50%",s2:""}},
+    10:{C:{s1:"19.50%",s2:""},U:{s1:"21.45%",s2:""},R:{s1:"23.79%",s2:""},E:{s1:"26.52%",s2:""},L:{s1:"29.64%",s2:""}},
+    11:{C:{s1:"20.25%",s2:""},U:{s1:"22.28%",s2:""},R:{s1:"24.70%",s2:""},E:{s1:"27.54%",s2:""},L:{s1:"30.78%",s2:""}},
+    12:{C:{s1:"21.00%",s2:""},U:{s1:"23.10%",s2:""},R:{s1:"25.62%",s2:""},E:{s1:"28.56%",s2:""},L:{s1:"31.92%",s2:""}},
+    13:{C:{s1:"21.75%",s2:""},U:{s1:"23.93%",s2:""},R:{s1:"26.54%",s2:""},E:{s1:"29.58%",s2:""},L:{s1:"33.06%",s2:""}},
+    14:{C:{s1:"22.50%",s2:""},U:{s1:"24.75%",s2:""},R:{s1:"27.45%",s2:""},E:{s1:"30.60%",s2:""},L:{s1:"34.20%",s2:""}},
+    15:{C:{s1:"23.25%",s2:""},U:{s1:"25.58%",s2:""},R:{s1:"28.36%",s2:""},E:{s1:"31.62%",s2:""},L:{s1:"35.34%",s2:""}},
+    16:{C:{s1:"24.38%",s2:""},U:{s1:"26.81%",s2:""},R:{s1:"29.74%",s2:""},E:{s1:"33.15%",s2:""},L:{s1:"37.05%",s2:""}},
+    17:{C:{s1:"25.50%",s2:""},U:{s1:"28.05%",s2:""},R:{s1:"31.11%",s2:""},E:{s1:"34.68%",s2:""},L:{s1:"38.76%",s2:""}},
+    18:{C:{s1:"26.62%",s2:""},U:{s1:"29.29%",s2:""},R:{s1:"32.48%",s2:""},E:{s1:"36.21%",s2:""},L:{s1:"40.47%",s2:""}},
+    19:{C:{s1:"27.75%",s2:""},U:{s1:"30.53%",s2:""},R:{s1:"33.85%",s2:""},E:{s1:"37.74%",s2:""},L:{s1:"42.18%",s2:""}},
+    20:{C:{s1:"28.88%",s2:""},U:{s1:"31.76%",s2:""},R:{s1:"35.23%",s2:""},E:{s1:"39.27%",s2:""},L:{s1:"43.89%",s2:""}},
+    21:{C:{s1:"30.00%",s2:""},U:{s1:"33.00%",s2:""},R:{s1:"36.60%",s2:""},E:{s1:"40.80%",s2:""},L:{s1:"45.60%",s2:""}},
+    22:{C:{s1:"31.12%",s2:""},U:{s1:"34.24%",s2:""},R:{s1:"37.97%",s2:""},E:{s1:"42.33%",s2:""},L:{s1:"47.31%",s2:""}},
+    23:{C:{s1:"32.25%",s2:""},U:{s1:"35.48%",s2:""},R:{s1:"39.34%",s2:""},E:{s1:"43.86%",s2:""},L:{s1:"49.02%",s2:""}},
+    24:{C:{s1:"33.38%",s2:""},U:{s1:"36.71%",s2:""},R:{s1:"40.72%",s2:"8.30%"},E:{s1:"45.39%",s2:"9.25%"},L:{s1:"50.73%",s2:"10.34%"}},
+    25:{C:{s1:"34.50%",s2:""},U:{s1:"37.95%",s2:""},R:{s1:"42.09%",s2:"8.78%"},E:{s1:"46.92%",s2:"9.79%"},L:{s1:"52.44%",s2:"10.94%"}},
+    26:{C:{s1:"35.62%",s2:""},U:{s1:"39.19%",s2:""},R:{s1:"43.46%",s2:"9.27%"},E:{s1:"48.45%",s2:"10.33%"},L:{s1:"54.15%",s2:"11.54%"}},
+    27:{C:{s1:"36.75%",s2:""},U:{s1:"40.43%",s2:""},R:{s1:"44.84%",s2:"9.75%"},E:{s1:"49.98%",s2:"10.87%"},L:{s1:"55.86%",s2:"12.15%"}},
+    28:{C:{s1:"37.88%",s2:""},U:{s1:"41.66%",s2:""},R:{s1:"46.21%",s2:"10.23%"},E:{s1:"51.51%",s2:"11.41%"},L:{s1:"57.57%",s2:"12.75%"}},
+    29:{C:{s1:"39.00%",s2:""},U:{s1:"42.90%",s2:""},R:{s1:"47.58%",s2:"10.71%"},E:{s1:"53.04%",s2:"11.94%"},L:{s1:"59.28%",s2:"13.35%"}},
+    30:{C:{s1:"40.12%",s2:""},U:{s1:"44.14%",s2:""},R:{s1:"48.95%",s2:"11.20%"},E:{s1:"54.57%",s2:"12.48%"},L:{s1:"60.99%",s2:"13.95%"}},
+    31:{C:{s1:"41.25%",s2:""},U:{s1:"45.38%",s2:""},R:{s1:"50.32%",s2:"11.68%"},E:{s1:"56.10%",s2:"13.02%"},L:{s1:"62.70%",s2:"14.55%"}},
+    32:{C:{s1:"42.38%",s2:""},U:{s1:"46.61%",s2:""},R:{s1:"51.70%",s2:"12.16%"},E:{s1:"57.63%",s2:"13.56%"},L:{s1:"64.41%",s2:"15.15%"}},
+    33:{C:{s1:"43.50%",s2:""},U:{s1:"47.85%",s2:""},R:{s1:"53.07%",s2:"12.65%"},E:{s1:"59.16%",s2:"14.10%"},L:{s1:"66.12%",s2:"15.76%"}},
+    34:{C:{s1:"44.62%",s2:""},U:{s1:"49.09%",s2:""},R:{s1:"54.44%",s2:"13.13%"},E:{s1:"60.69%",s2:"14.64%"},L:{s1:"67.83%",s2:"16.36%"}},
+    35:{C:{s1:"45.75%",s2:""},U:{s1:"50.33%",s2:""},R:{s1:"55.81%",s2:"13.61%"},E:{s1:"62.22%",s2:"15.17%"},L:{s1:"69.54%",s2:"16.96%"}},
+    36:{C:{s1:"46.88%",s2:""},U:{s1:"51.56%",s2:""},R:{s1:"57.19%",s2:"14.10%"},E:{s1:"63.75%",s2:"15.71%"},L:{s1:"71.25%",s2:"17.56%"}},
+    37:{C:{s1:"48.00%",s2:""},U:{s1:"52.80%",s2:""},R:{s1:"58.56%",s2:"14.58%"},E:{s1:"65.28%",s2:"16.25%"},L:{s1:"72.96%",s2:"18.16%"}},
+    38:{C:{s1:"49.12%",s2:""},U:{s1:"54.04%",s2:""},R:{s1:"59.93%",s2:"15.06%"},E:{s1:"66.81%",s2:"16.79%"},L:{s1:"74.67%",s2:"18.76%"}},
+    39:{C:{s1:"50.25%",s2:""},U:{s1:"55.28%",s2:""},R:{s1:"61.30%",s2:"15.54%"},E:{s1:"68.34%",s2:"17.33%"},L:{s1:"76.38%",s2:"19.37%"}},
+    40:{C:{s1:"51.38%",s2:""},U:{s1:"56.51%",s2:""},R:{s1:"62.68%",s2:"16.03%"},E:{s1:"69.87%",s2:"17.87%"},L:{s1:"78.09%",s2:"19.97%"}},
+    41:{C:{s1:"52.88%",s2:""},U:{s1:"58.16%",s2:""},R:{s1:"64.51%",s2:"16.51%"},E:{s1:"71.91%",s2:"18.40%"},L:{s1:"80.37%",s2:"20.57%"}},
+    42:{C:{s1:"54.38%",s2:""},U:{s1:"59.81%",s2:""},R:{s1:"66.34%",s2:"16.99%"},E:{s1:"73.95%",s2:"18.94%"},L:{s1:"82.65%",s2:"21.17%"}},
+    43:{C:{s1:"55.88%",s2:""},U:{s1:"61.46%",s2:""},R:{s1:"68.17%",s2:"17.48%"},E:{s1:"75.99%",s2:"19.48%"},L:{s1:"84.93%",s2:"21.77%"}},
+    44:{C:{s1:"57.38%",s2:""},U:{s1:"63.11%",s2:""},R:{s1:"70.00%",s2:"17.96%"},E:{s1:"78.03%",s2:"20.02%"},L:{s1:"87.21%",s2:"22.37%"}},
+    45:{C:{s1:"58.88%",s2:""},U:{s1:"64.76%",s2:""},R:{s1:"71.83%",s2:"18.44%"},E:{s1:"80.07%",s2:"20.56%"},L:{s1:"89.49%",s2:"22.98%"}},
+    46:{C:{s1:"60.38%",s2:""},U:{s1:"66.41%",s2:""},R:{s1:"73.66%",s2:"18.92%"},E:{s1:"82.11%",s2:"21.10%"},L:{s1:"91.77%",s2:"23.58%"}},
+    47:{C:{s1:"61.88%",s2:""},U:{s1:"68.06%",s2:""},R:{s1:"75.49%",s2:"19.41%"},E:{s1:"84.15%",s2:"21.63%"},L:{s1:"94.05%",s2:"24.18%"}},
+    48:{C:{s1:"63.38%",s2:""},U:{s1:"69.71%",s2:""},R:{s1:"77.32%",s2:"19.89%"},E:{s1:"86.19%",s2:"22.17%"},L:{s1:"96.33%",s2:"24.78%"}},
+    49:{C:{s1:"64.88%",s2:""},U:{s1:"71.36%",s2:""},R:{s1:"79.15%",s2:"20.37%"},E:{s1:"88.23%",s2:"22.71%"},L:{s1:"98.61%",s2:"25.38%"}},
+    50:{C:{s1:"66.38%",s2:""},U:{s1:"73.01%",s2:""},R:{s1:"80.98%",s2:"20.86%"},E:{s1:"90.27%",s2:"23.25%"},L:{s1:"100.89%",s2:"25.98%"}},
+    51:{C:{s1:"67.88%",s2:""},U:{s1:"74.66%",s2:""},R:{s1:"82.81%",s2:"21.34%"},E:{s1:"92.31%",s2:"23.79%"},L:{s1:"103.17%",s2:"26.59%"}},
+    52:{C:{s1:"69.38%",s2:""},U:{s1:"76.31%",s2:""},R:{s1:"84.64%",s2:"21.82%"},E:{s1:"94.35%",s2:"24.33%"},L:{s1:"105.45%",s2:"27.19%"}},
+    53:{C:{s1:"70.88%",s2:""},U:{s1:"77.96%",s2:""},R:{s1:"86.47%",s2:"22.30%"},E:{s1:"96.39%",s2:"24.86%"},L:{s1:"107.73%",s2:"27.79%"}},
+    54:{C:{s1:"72.38%",s2:""},U:{s1:"79.61%",s2:""},R:{s1:"88.30%",s2:"22.79%"},E:{s1:"98.43%",s2:"25.40%"},L:{s1:"110.01%",s2:"28.39%"}},
+    55:{C:{s1:"73.88%",s2:""},U:{s1:"81.26%",s2:""},R:{s1:"90.13%",s2:"23.27%"},E:{s1:"100.47%",s2:"25.94%"},L:{s1:"112.29%",s2:"28.99%"}},
+    56:{C:{s1:"75.38%",s2:""},U:{s1:"82.91%",s2:""},R:{s1:"91.96%",s2:"23.75%"},E:{s1:"102.51%",s2:"26.48%"},L:{s1:"114.57%",s2:"29.59%"}},
+    57:{C:{s1:"76.88%",s2:""},U:{s1:"84.56%",s2:""},R:{s1:"93.79%",s2:"24.24%"},E:{s1:"104.55%",s2:"27.02%"},L:{s1:"116.85%",s2:"30.20%"}},
+    58:{C:{s1:"78.38%",s2:""},U:{s1:"86.21%",s2:""},R:{s1:"95.62%",s2:"24.72%"},E:{s1:"106.59%",s2:"27.56%"},L:{s1:"119.13%",s2:"30.80%"}},
+    59:{C:{s1:"79.88%",s2:""},U:{s1:"87.86%",s2:""},R:{s1:"97.45%",s2:"25.20%"},E:{s1:"108.63%",s2:"28.09%"},L:{s1:"121.41%",s2:"31.40%"}},
+    60:{C:{s1:"81.38%",s2:""},U:{s1:"89.51%",s2:""},R:{s1:"99.28%",s2:"25.69%"},E:{s1:"110.67%",s2:"28.63%"},L:{s1:"123.69%",s2:"32.00%"}},
+    61:{C:{s1:"82.88%",s2:""},U:{s1:"91.16%",s2:""},R:{s1:"101.11%",s2:"26.17%"},E:{s1:"112.71%",s2:"29.17%"},L:{s1:"125.97%",s2:"32.60%"}},
+    62:{C:{s1:"84.38%",s2:""},U:{s1:"92.81%",s2:""},R:{s1:"102.94%",s2:"26.65%"},E:{s1:"114.75%",s2:"29.71%"},L:{s1:"128.25%",s2:"33.20%"}},
+    63:{C:{s1:"85.88%",s2:""},U:{s1:"94.46%",s2:""},R:{s1:"104.77%",s2:"27.13%"},E:{s1:"116.79%",s2:"30.25%"},L:{s1:"130.53%",s2:"33.81%"}},
+    64:{C:{s1:"87.38%",s2:""},U:{s1:"96.11%",s2:""},R:{s1:"106.60%",s2:"27.62%"},E:{s1:"118.83%",s2:"30.79%"},L:{s1:"132.81%",s2:"34.41%"}},
+    65:{C:{s1:"88.88%",s2:""},U:{s1:"97.76%",s2:""},R:{s1:"108.43%",s2:"28.10%"},E:{s1:"120.87%",s2:"31.32%"},L:{s1:"135.09%",s2:"35.01%"}},
+  },
+  glove: {
+    0:{C:{s1:"4.00%",s2:""},U:{s1:"4.40%",s2:""},R:{s1:"4.88%",s2:""},E:{s1:"5.44%",s2:""},L:{s1:"6.08%",s2:""}},
+    1:{C:{s1:"4.25%",s2:""},U:{s1:"4.68%",s2:""},R:{s1:"5.18%",s2:""},E:{s1:"5.78%",s2:""},L:{s1:"6.46%",s2:""}},
+    2:{C:{s1:"4.50%",s2:""},U:{s1:"4.95%",s2:""},R:{s1:"5.49%",s2:""},E:{s1:"6.12%",s2:""},L:{s1:"6.84%",s2:""}},
+    3:{C:{s1:"4.75%",s2:""},U:{s1:"5.23%",s2:""},R:{s1:"5.79%",s2:""},E:{s1:"6.46%",s2:""},L:{s1:"7.22%",s2:""}},
+    4:{C:{s1:"5.00%",s2:""},U:{s1:"5.50%",s2:""},R:{s1:"6.10%",s2:""},E:{s1:"6.80%",s2:""},L:{s1:"7.60%",s2:""}},
+    5:{C:{s1:"5.25%",s2:""},U:{s1:"5.78%",s2:""},R:{s1:"6.41%",s2:""},E:{s1:"7.14%",s2:""},L:{s1:"7.98%",s2:""}},
+    6:{C:{s1:"5.50%",s2:""},U:{s1:"6.05%",s2:""},R:{s1:"6.71%",s2:""},E:{s1:"7.48%",s2:""},L:{s1:"8.36%",s2:""}},
+    7:{C:{s1:"5.75%",s2:""},U:{s1:"6.33%",s2:""},R:{s1:"7.01%",s2:""},E:{s1:"7.82%",s2:""},L:{s1:"8.74%",s2:""}},
+    8:{C:{s1:"6.00%",s2:""},U:{s1:"6.60%",s2:""},R:{s1:"7.32%",s2:""},E:{s1:"8.16%",s2:""},L:{s1:"9.12%",s2:""}},
+    9:{C:{s1:"6.25%",s2:""},U:{s1:"6.88%",s2:""},R:{s1:"7.62%",s2:""},E:{s1:"8.50%",s2:""},L:{s1:"9.50%",s2:""}},
+    10:{C:{s1:"6.50%",s2:""},U:{s1:"7.15%",s2:""},R:{s1:"7.93%",s2:""},E:{s1:"8.84%",s2:""},L:{s1:"9.88%",s2:""}},
+    11:{C:{s1:"6.75%",s2:""},U:{s1:"7.43%",s2:""},R:{s1:"8.23%",s2:""},E:{s1:"9.18%",s2:""},L:{s1:"10.26%",s2:""}},
+    12:{C:{s1:"7.00%",s2:""},U:{s1:"7.70%",s2:""},R:{s1:"8.54%",s2:""},E:{s1:"9.52%",s2:""},L:{s1:"10.64%",s2:""}},
+    13:{C:{s1:"7.25%",s2:""},U:{s1:"7.98%",s2:""},R:{s1:"8.85%",s2:""},E:{s1:"9.86%",s2:""},L:{s1:"11.02%",s2:""}},
+    14:{C:{s1:"7.50%",s2:""},U:{s1:"8.25%",s2:""},R:{s1:"9.15%",s2:""},E:{s1:"10.20%",s2:""},L:{s1:"11.40%",s2:""}},
+    15:{C:{s1:"7.75%",s2:""},U:{s1:"8.53%",s2:""},R:{s1:"9.46%",s2:""},E:{s1:"10.54%",s2:""},L:{s1:"11.78%",s2:""}},
+    16:{C:{s1:"8.12%",s2:""},U:{s1:"8.94%",s2:""},R:{s1:"9.91%",s2:""},E:{s1:"11.05%",s2:""},L:{s1:"12.35%",s2:""}},
+    17:{C:{s1:"8.50%",s2:""},U:{s1:"9.35%",s2:""},R:{s1:"10.37%",s2:""},E:{s1:"11.56%",s2:""},L:{s1:"12.92%",s2:""}},
+    18:{C:{s1:"8.88%",s2:""},U:{s1:"9.76%",s2:""},R:{s1:"10.83%",s2:""},E:{s1:"12.07%",s2:""},L:{s1:"13.49%",s2:""}},
+    19:{C:{s1:"9.25%",s2:""},U:{s1:"10.18%",s2:""},R:{s1:"11.29%",s2:""},E:{s1:"12.58%",s2:""},L:{s1:"14.06%",s2:""}},
+    20:{C:{s1:"9.62%",s2:""},U:{s1:"10.59%",s2:""},R:{s1:"11.74%",s2:""},E:{s1:"13.09%",s2:""},L:{s1:"14.63%",s2:""}},
+    21:{C:{s1:"10.00%",s2:""},U:{s1:"11.00%",s2:""},R:{s1:"12.20%",s2:""},E:{s1:"13.60%",s2:""},L:{s1:"15.20%",s2:""}},
+    22:{C:{s1:"10.38%",s2:""},U:{s1:"11.41%",s2:""},R:{s1:"12.66%",s2:""},E:{s1:"14.11%",s2:""},L:{s1:"15.77%",s2:""}},
+    23:{C:{s1:"10.75%",s2:""},U:{s1:"11.83%",s2:""},R:{s1:"13.12%",s2:""},E:{s1:"14.62%",s2:""},L:{s1:"16.34%",s2:""}},
+    24:{C:{s1:"11.12%",s2:""},U:{s1:"12.24%",s2:""},R:{s1:"13.57%",s2:"1.40%"},E:{s1:"15.13%",s2:"1.56%"},L:{s1:"16.91%",s2:"1.74%"}},
+    25:{C:{s1:"11.50%",s2:""},U:{s1:"12.65%",s2:""},R:{s1:"14.03%",s2:"1.61%"},E:{s1:"15.64%",s2:"1.79%"},L:{s1:"17.48%",s2:"2.00%"}},
+    26:{C:{s1:"11.88%",s2:""},U:{s1:"13.06%",s2:""},R:{s1:"14.49%",s2:"1.81%"},E:{s1:"16.15%",s2:"2.02%"},L:{s1:"18.05%",s2:"2.26%"}},
+    27:{C:{s1:"12.25%",s2:""},U:{s1:"13.48%",s2:""},R:{s1:"14.95%",s2:"2.02%"},E:{s1:"16.66%",s2:"2.25%"},L:{s1:"18.62%",s2:"2.51%"}},
+    28:{C:{s1:"12.62%",s2:""},U:{s1:"13.89%",s2:""},R:{s1:"15.40%",s2:"2.22%"},E:{s1:"17.17%",s2:"2.48%"},L:{s1:"19.19%",s2:"2.77%"}},
+    29:{C:{s1:"13.00%",s2:""},U:{s1:"14.30%",s2:""},R:{s1:"15.86%",s2:"2.43%"},E:{s1:"17.68%",s2:"2.71%"},L:{s1:"19.76%",s2:"3.02%"}},
+    30:{C:{s1:"13.38%",s2:""},U:{s1:"14.71%",s2:""},R:{s1:"16.32%",s2:"2.63%"},E:{s1:"18.19%",s2:"2.93%"},L:{s1:"20.33%",s2:"3.28%"}},
+    31:{C:{s1:"13.75%",s2:""},U:{s1:"15.13%",s2:""},R:{s1:"16.77%",s2:"2.84%"},E:{s1:"18.70%",s2:"3.16%"},L:{s1:"20.90%",s2:"3.54%"}},
+    32:{C:{s1:"14.12%",s2:""},U:{s1:"15.54%",s2:""},R:{s1:"17.23%",s2:"3.04%"},E:{s1:"19.21%",s2:"3.39%"},L:{s1:"21.47%",s2:"3.79%"}},
+    33:{C:{s1:"14.50%",s2:""},U:{s1:"15.95%",s2:""},R:{s1:"17.69%",s2:"3.25%"},E:{s1:"19.72%",s2:"3.62%"},L:{s1:"22.04%",s2:"4.05%"}},
+    34:{C:{s1:"14.88%",s2:""},U:{s1:"16.36%",s2:""},R:{s1:"18.15%",s2:"3.45%"},E:{s1:"20.23%",s2:"3.85%"},L:{s1:"22.61%",s2:"4.30%"}},
+    35:{C:{s1:"15.25%",s2:""},U:{s1:"16.78%",s2:""},R:{s1:"18.61%",s2:"3.66%"},E:{s1:"20.74%",s2:"4.08%"},L:{s1:"23.18%",s2:"4.56%"}},
+    36:{C:{s1:"15.62%",s2:""},U:{s1:"17.19%",s2:""},R:{s1:"19.06%",s2:"3.86%"},E:{s1:"21.25%",s2:"4.31%"},L:{s1:"23.75%",s2:"4.81%"}},
+    37:{C:{s1:"16.00%",s2:""},U:{s1:"17.60%",s2:""},R:{s1:"19.52%",s2:"4.07%"},E:{s1:"21.76%",s2:"4.54%"},L:{s1:"24.32%",s2:"5.07%"}},
+    38:{C:{s1:"16.38%",s2:""},U:{s1:"18.01%",s2:""},R:{s1:"19.98%",s2:"4.28%"},E:{s1:"22.27%",s2:"4.77%"},L:{s1:"24.89%",s2:"5.33%"}},
+    39:{C:{s1:"16.75%",s2:""},U:{s1:"18.43%",s2:""},R:{s1:"20.43%",s2:"4.48%"},E:{s1:"22.78%",s2:"4.99%"},L:{s1:"25.46%",s2:"5.58%"}},
+    40:{C:{s1:"17.12%",s2:""},U:{s1:"18.84%",s2:""},R:{s1:"20.89%",s2:"4.69%"},E:{s1:"23.29%",s2:"5.22%"},L:{s1:"26.03%",s2:"5.84%"}},
+    41:{C:{s1:"17.62%",s2:""},U:{s1:"19.39%",s2:""},R:{s1:"21.50%",s2:"4.89%"},E:{s1:"23.97%",s2:"5.45%"},L:{s1:"26.79%",s2:"6.09%"}},
+    42:{C:{s1:"18.12%",s2:""},U:{s1:"19.94%",s2:""},R:{s1:"22.11%",s2:"5.10%"},E:{s1:"24.65%",s2:"5.68%"},L:{s1:"27.55%",s2:"6.35%"}},
+    43:{C:{s1:"18.62%",s2:""},U:{s1:"20.49%",s2:""},R:{s1:"22.72%",s2:"5.30%"},E:{s1:"25.33%",s2:"5.91%"},L:{s1:"28.31%",s2:"6.61%"}},
+    44:{C:{s1:"19.12%",s2:""},U:{s1:"21.04%",s2:""},R:{s1:"23.33%",s2:"5.51%"},E:{s1:"26.01%",s2:"6.14%"},L:{s1:"29.07%",s2:"6.86%"}},
+    45:{C:{s1:"19.62%",s2:""},U:{s1:"21.59%",s2:""},R:{s1:"23.94%",s2:"5.71%"},E:{s1:"26.69%",s2:"6.37%"},L:{s1:"29.83%",s2:"7.12%"}},
+    46:{C:{s1:"20.12%",s2:""},U:{s1:"22.14%",s2:""},R:{s1:"24.55%",s2:"5.92%"},E:{s1:"27.37%",s2:"6.60%"},L:{s1:"30.59%",s2:"7.37%"}},
+    47:{C:{s1:"20.62%",s2:""},U:{s1:"22.69%",s2:""},R:{s1:"25.16%",s2:"6.12%"},E:{s1:"28.05%",s2:"6.83%"},L:{s1:"31.35%",s2:"7.63%"}},
+    48:{C:{s1:"21.12%",s2:""},U:{s1:"23.24%",s2:""},R:{s1:"25.77%",s2:"6.33%"},E:{s1:"28.73%",s2:"7.06%"},L:{s1:"32.11%",s2:"7.89%"}},
+    49:{C:{s1:"21.62%",s2:""},U:{s1:"23.79%",s2:""},R:{s1:"26.38%",s2:"6.53%"},E:{s1:"29.41%",s2:"7.28%"},L:{s1:"32.87%",s2:"8.14%"}},
+    50:{C:{s1:"22.12%",s2:""},U:{s1:"24.34%",s2:""},R:{s1:"26.99%",s2:"6.74%"},E:{s1:"30.09%",s2:"7.51%"},L:{s1:"33.63%",s2:"8.40%"}},
+    51:{C:{s1:"22.62%",s2:""},U:{s1:"24.89%",s2:""},R:{s1:"27.60%",s2:"6.94%"},E:{s1:"30.77%",s2:"7.74%"},L:{s1:"34.39%",s2:"8.65%"}},
+    52:{C:{s1:"23.12%",s2:""},U:{s1:"25.44%",s2:""},R:{s1:"28.21%",s2:"7.15%"},E:{s1:"31.45%",s2:"7.97%"},L:{s1:"35.15%",s2:"8.91%"}},
+    53:{C:{s1:"23.62%",s2:""},U:{s1:"25.99%",s2:""},R:{s1:"28.82%",s2:"7.36%"},E:{s1:"32.13%",s2:"8.20%"},L:{s1:"35.91%",s2:"9.16%"}},
+    54:{C:{s1:"24.12%",s2:""},U:{s1:"26.54%",s2:""},R:{s1:"29.43%",s2:"7.56%"},E:{s1:"32.81%",s2:"8.43%"},L:{s1:"36.67%",s2:"9.42%"}},
+    55:{C:{s1:"24.62%",s2:""},U:{s1:"27.09%",s2:""},R:{s1:"30.04%",s2:"7.77%"},E:{s1:"33.49%",s2:"8.66%"},L:{s1:"37.43%",s2:"9.68%"}},
+    56:{C:{s1:"25.12%",s2:""},U:{s1:"27.64%",s2:""},R:{s1:"30.65%",s2:"7.97%"},E:{s1:"34.17%",s2:"8.89%"},L:{s1:"38.19%",s2:"9.93%"}},
+    57:{C:{s1:"25.62%",s2:""},U:{s1:"28.19%",s2:""},R:{s1:"31.26%",s2:"8.18%"},E:{s1:"34.85%",s2:"9.12%"},L:{s1:"38.95%",s2:"10.19%"}},
+    58:{C:{s1:"26.12%",s2:""},U:{s1:"28.74%",s2:""},R:{s1:"31.87%",s2:"8.38%"},E:{s1:"35.53%",s2:"9.34%"},L:{s1:"39.71%",s2:"10.44%"}},
+    59:{C:{s1:"26.62%",s2:""},U:{s1:"29.29%",s2:""},R:{s1:"32.48%",s2:"8.59%"},E:{s1:"36.21%",s2:"9.57%"},L:{s1:"40.47%",s2:"10.70%"}},
+    60:{C:{s1:"27.12%",s2:""},U:{s1:"29.84%",s2:""},R:{s1:"33.09%",s2:"8.79%"},E:{s1:"36.89%",s2:"9.80%"},L:{s1:"41.23%",s2:"10.96%"}},
+    61:{C:{s1:"27.62%",s2:""},U:{s1:"30.39%",s2:""},R:{s1:"33.70%",s2:"9.00%"},E:{s1:"37.57%",s2:"10.03%"},L:{s1:"41.99%",s2:"11.21%"}},
+    62:{C:{s1:"28.12%",s2:""},U:{s1:"30.94%",s2:""},R:{s1:"34.31%",s2:"9.20%"},E:{s1:"38.25%",s2:"10.26%"},L:{s1:"42.75%",s2:"11.47%"}},
+    63:{C:{s1:"28.62%",s2:""},U:{s1:"31.49%",s2:""},R:{s1:"34.92%",s2:"9.41%"},E:{s1:"38.93%",s2:"10.49%"},L:{s1:"43.51%",s2:"11.72%"}},
+    64:{C:{s1:"29.12%",s2:""},U:{s1:"32.04%",s2:""},R:{s1:"35.53%",s2:"9.61%"},E:{s1:"39.61%",s2:"10.72%"},L:{s1:"44.27%",s2:"11.98%"}},
+    65:{C:{s1:"29.62%",s2:""},U:{s1:"32.59%",s2:""},R:{s1:"36.14%",s2:"9.82%"},E:{s1:"40.29%",s2:"10.95%"},L:{s1:"45.03%",s2:"12.23%"}},
+  },
+  feet: {
+    0:{C:{s1:"8.00%",s2:""},U:{s1:"8.80%",s2:""},R:{s1:"9.76%",s2:""},E:{s1:"10.88%",s2:""},L:{s1:"12.16%",s2:""}},
+    1:{C:{s1:"8.50%",s2:""},U:{s1:"9.35%",s2:""},R:{s1:"10.37%",s2:""},E:{s1:"11.56%",s2:""},L:{s1:"12.92%",s2:""}},
+    2:{C:{s1:"9.00%",s2:""},U:{s1:"9.90%",s2:""},R:{s1:"10.98%",s2:""},E:{s1:"12.24%",s2:""},L:{s1:"13.68%",s2:""}},
+    3:{C:{s1:"9.50%",s2:""},U:{s1:"10.45%",s2:""},R:{s1:"11.59%",s2:""},E:{s1:"12.92%",s2:""},L:{s1:"14.44%",s2:""}},
+    4:{C:{s1:"10.00%",s2:""},U:{s1:"11.00%",s2:""},R:{s1:"12.20%",s2:""},E:{s1:"13.60%",s2:""},L:{s1:"15.20%",s2:""}},
+    5:{C:{s1:"10.50%",s2:""},U:{s1:"11.55%",s2:""},R:{s1:"12.81%",s2:""},E:{s1:"14.28%",s2:""},L:{s1:"15.96%",s2:""}},
+    6:{C:{s1:"11.00%",s2:""},U:{s1:"12.10%",s2:""},R:{s1:"13.42%",s2:""},E:{s1:"14.96%",s2:""},L:{s1:"16.72%",s2:""}},
+    7:{C:{s1:"11.50%",s2:""},U:{s1:"12.65%",s2:""},R:{s1:"14.03%",s2:""},E:{s1:"15.64%",s2:""},L:{s1:"17.48%",s2:""}},
+    8:{C:{s1:"12.00%",s2:""},U:{s1:"13.20%",s2:""},R:{s1:"14.64%",s2:""},E:{s1:"16.32%",s2:""},L:{s1:"18.24%",s2:""}},
+    9:{C:{s1:"12.50%",s2:""},U:{s1:"13.75%",s2:""},R:{s1:"15.25%",s2:""},E:{s1:"17.00%",s2:""},L:{s1:"19.00%",s2:""}},
+    10:{C:{s1:"13.00%",s2:""},U:{s1:"14.30%",s2:""},R:{s1:"15.86%",s2:""},E:{s1:"17.68%",s2:""},L:{s1:"19.76%",s2:""}},
+    11:{C:{s1:"13.50%",s2:""},U:{s1:"14.85%",s2:""},R:{s1:"16.47%",s2:""},E:{s1:"18.36%",s2:""},L:{s1:"20.52%",s2:""}},
+    12:{C:{s1:"14.00%",s2:""},U:{s1:"15.40%",s2:""},R:{s1:"17.08%",s2:""},E:{s1:"19.04%",s2:""},L:{s1:"21.28%",s2:""}},
+    13:{C:{s1:"14.50%",s2:""},U:{s1:"15.95%",s2:""},R:{s1:"17.69%",s2:""},E:{s1:"19.72%",s2:""},L:{s1:"22.04%",s2:""}},
+    14:{C:{s1:"15.00%",s2:""},U:{s1:"16.50%",s2:""},R:{s1:"18.30%",s2:""},E:{s1:"20.40%",s2:""},L:{s1:"22.80%",s2:""}},
+    15:{C:{s1:"15.50%",s2:""},U:{s1:"17.05%",s2:""},R:{s1:"18.91%",s2:""},E:{s1:"21.08%",s2:""},L:{s1:"23.56%",s2:""}},
+    16:{C:{s1:"16.25%",s2:""},U:{s1:"17.88%",s2:""},R:{s1:"19.82%",s2:""},E:{s1:"22.10%",s2:""},L:{s1:"24.70%",s2:""}},
+    17:{C:{s1:"17.00%",s2:""},U:{s1:"18.70%",s2:""},R:{s1:"20.74%",s2:""},E:{s1:"23.12%",s2:""},L:{s1:"25.84%",s2:""}},
+    18:{C:{s1:"17.75%",s2:""},U:{s1:"19.53%",s2:""},R:{s1:"21.66%",s2:""},E:{s1:"24.14%",s2:""},L:{s1:"26.98%",s2:""}},
+    19:{C:{s1:"18.50%",s2:""},U:{s1:"20.35%",s2:""},R:{s1:"22.57%",s2:""},E:{s1:"25.16%",s2:""},L:{s1:"28.12%",s2:""}},
+    20:{C:{s1:"19.25%",s2:""},U:{s1:"21.18%",s2:""},R:{s1:"23.48%",s2:""},E:{s1:"26.18%",s2:""},L:{s1:"29.26%",s2:""}},
+    21:{C:{s1:"20.00%",s2:""},U:{s1:"22.00%",s2:""},R:{s1:"24.40%",s2:""},E:{s1:"27.20%",s2:""},L:{s1:"30.40%",s2:""}},
+    22:{C:{s1:"20.75%",s2:""},U:{s1:"22.83%",s2:""},R:{s1:"25.31%",s2:""},E:{s1:"28.22%",s2:""},L:{s1:"31.54%",s2:""}},
+    23:{C:{s1:"21.50%",s2:""},U:{s1:"23.65%",s2:""},R:{s1:"26.23%",s2:""},E:{s1:"29.24%",s2:""},L:{s1:"32.68%",s2:""}},
+    24:{C:{s1:"22.25%",s2:""},U:{s1:"24.48%",s2:""},R:{s1:"27.14%",s2:"1.40%"},E:{s1:"30.26%",s2:"1.56%"},L:{s1:"33.82%",s2:"1.74%"}},
+    25:{C:{s1:"23.00%",s2:""},U:{s1:"25.30%",s2:""},R:{s1:"28.06%",s2:"1.61%"},E:{s1:"31.28%",s2:"1.79%"},L:{s1:"34.96%",s2:"2.00%"}},
+    26:{C:{s1:"23.75%",s2:""},U:{s1:"26.13%",s2:""},R:{s1:"28.97%",s2:"1.81%"},E:{s1:"32.30%",s2:"2.02%"},L:{s1:"36.10%",s2:"2.26%"}},
+    27:{C:{s1:"24.50%",s2:""},U:{s1:"26.95%",s2:""},R:{s1:"29.89%",s2:"2.02%"},E:{s1:"33.32%",s2:"2.25%"},L:{s1:"37.24%",s2:"2.51%"}},
+    28:{C:{s1:"25.25%",s2:""},U:{s1:"27.78%",s2:""},R:{s1:"30.80%",s2:"2.22%"},E:{s1:"34.34%",s2:"2.48%"},L:{s1:"38.38%",s2:"2.77%"}},
+    29:{C:{s1:"26.00%",s2:""},U:{s1:"28.60%",s2:""},R:{s1:"31.72%",s2:"2.43%"},E:{s1:"35.36%",s2:"2.71%"},L:{s1:"39.52%",s2:"3.02%"}},
+    30:{C:{s1:"26.75%",s2:""},U:{s1:"29.43%",s2:""},R:{s1:"32.63%",s2:"2.63%"},E:{s1:"36.38%",s2:"2.93%"},L:{s1:"40.66%",s2:"3.28%"}},
+    31:{C:{s1:"27.50%",s2:""},U:{s1:"30.25%",s2:""},R:{s1:"33.55%",s2:"2.84%"},E:{s1:"37.40%",s2:"3.16%"},L:{s1:"41.80%",s2:"3.54%"}},
+    32:{C:{s1:"28.25%",s2:""},U:{s1:"31.08%",s2:""},R:{s1:"34.46%",s2:"3.04%"},E:{s1:"38.42%",s2:"3.39%"},L:{s1:"42.94%",s2:"3.79%"}},
+    33:{C:{s1:"29.00%",s2:""},U:{s1:"31.90%",s2:""},R:{s1:"35.38%",s2:"3.25%"},E:{s1:"39.44%",s2:"3.62%"},L:{s1:"44.08%",s2:"4.05%"}},
+    34:{C:{s1:"29.75%",s2:""},U:{s1:"32.73%",s2:""},R:{s1:"36.30%",s2:"3.45%"},E:{s1:"40.46%",s2:"3.85%"},L:{s1:"45.22%",s2:"4.30%"}},
+    35:{C:{s1:"30.50%",s2:""},U:{s1:"33.55%",s2:""},R:{s1:"37.21%",s2:"3.66%"},E:{s1:"41.48%",s2:"4.08%"},L:{s1:"46.36%",s2:"4.56%"}},
+    36:{C:{s1:"31.25%",s2:""},U:{s1:"34.38%",s2:""},R:{s1:"38.12%",s2:"3.86%"},E:{s1:"42.50%",s2:"4.31%"},L:{s1:"47.50%",s2:"4.81%"}},
+    37:{C:{s1:"32.00%",s2:""},U:{s1:"35.20%",s2:""},R:{s1:"39.04%",s2:"4.07%"},E:{s1:"43.52%",s2:"4.54%"},L:{s1:"48.64%",s2:"5.07%"}},
+    38:{C:{s1:"32.75%",s2:""},U:{s1:"36.03%",s2:""},R:{s1:"39.95%",s2:"4.28%"},E:{s1:"44.54%",s2:"4.77%"},L:{s1:"49.78%",s2:"5.33%"}},
+    39:{C:{s1:"33.50%",s2:""},U:{s1:"36.85%",s2:""},R:{s1:"40.87%",s2:"4.48%"},E:{s1:"45.56%",s2:"4.99%"},L:{s1:"50.92%",s2:"5.58%"}},
+    40:{C:{s1:"34.25%",s2:""},U:{s1:"37.68%",s2:""},R:{s1:"41.78%",s2:"4.69%"},E:{s1:"46.58%",s2:"5.22%"},L:{s1:"52.06%",s2:"5.84%"}},
+    41:{C:{s1:"35.25%",s2:""},U:{s1:"38.78%",s2:""},R:{s1:"43.01%",s2:"4.89%"},E:{s1:"47.94%",s2:"5.45%"},L:{s1:"53.58%",s2:"6.09%"}},
+    42:{C:{s1:"36.25%",s2:""},U:{s1:"39.88%",s2:""},R:{s1:"44.23%",s2:"5.10%"},E:{s1:"49.30%",s2:"5.68%"},L:{s1:"55.10%",s2:"6.35%"}},
+    43:{C:{s1:"37.25%",s2:""},U:{s1:"40.98%",s2:""},R:{s1:"45.45%",s2:"5.30%"},E:{s1:"50.66%",s2:"5.91%"},L:{s1:"56.62%",s2:"6.61%"}},
+    44:{C:{s1:"38.25%",s2:""},U:{s1:"42.08%",s2:""},R:{s1:"46.66%",s2:"5.51%"},E:{s1:"52.02%",s2:"6.14%"},L:{s1:"58.14%",s2:"6.86%"}},
+    45:{C:{s1:"39.25%",s2:""},U:{s1:"43.18%",s2:""},R:{s1:"47.88%",s2:"5.71%"},E:{s1:"53.38%",s2:"6.37%"},L:{s1:"59.66%",s2:"7.12%"}},
+    46:{C:{s1:"40.25%",s2:""},U:{s1:"44.28%",s2:""},R:{s1:"49.10%",s2:"5.92%"},E:{s1:"54.74%",s2:"6.60%"},L:{s1:"61.18%",s2:"7.37%"}},
+    47:{C:{s1:"41.25%",s2:""},U:{s1:"45.38%",s2:""},R:{s1:"50.32%",s2:"6.12%"},E:{s1:"56.10%",s2:"6.83%"},L:{s1:"62.70%",s2:"7.63%"}},
+    48:{C:{s1:"42.25%",s2:""},U:{s1:"46.48%",s2:""},R:{s1:"51.55%",s2:"6.33%"},E:{s1:"57.46%",s2:"7.06%"},L:{s1:"64.22%",s2:"7.89%"}},
+    49:{C:{s1:"43.25%",s2:""},U:{s1:"47.58%",s2:""},R:{s1:"52.77%",s2:"6.53%"},E:{s1:"58.82%",s2:"7.28%"},L:{s1:"65.74%",s2:"8.14%"}},
+    50:{C:{s1:"44.25%",s2:""},U:{s1:"48.68%",s2:""},R:{s1:"53.98%",s2:"6.74%"},E:{s1:"60.18%",s2:"7.51%"},L:{s1:"67.26%",s2:"8.40%"}},
+    51:{C:{s1:"45.25%",s2:""},U:{s1:"49.78%",s2:""},R:{s1:"55.20%",s2:"6.94%"},E:{s1:"61.54%",s2:"7.74%"},L:{s1:"68.78%",s2:"8.65%"}},
+    52:{C:{s1:"46.25%",s2:""},U:{s1:"50.88%",s2:""},R:{s1:"56.42%",s2:"7.15%"},E:{s1:"62.90%",s2:"7.97%"},L:{s1:"70.30%",s2:"8.91%"}},
+    53:{C:{s1:"47.25%",s2:""},U:{s1:"51.98%",s2:""},R:{s1:"57.64%",s2:"7.36%"},E:{s1:"64.26%",s2:"8.20%"},L:{s1:"71.82%",s2:"9.16%"}},
+    54:{C:{s1:"48.25%",s2:""},U:{s1:"53.08%",s2:""},R:{s1:"58.87%",s2:"7.56%"},E:{s1:"65.62%",s2:"8.43%"},L:{s1:"73.34%",s2:"9.42%"}},
+    55:{C:{s1:"49.25%",s2:""},U:{s1:"54.18%",s2:""},R:{s1:"60.09%",s2:"7.77%"},E:{s1:"66.98%",s2:"8.66%"},L:{s1:"74.86%",s2:"9.68%"}},
+    56:{C:{s1:"50.25%",s2:""},U:{s1:"55.28%",s2:""},R:{s1:"61.30%",s2:"7.97%"},E:{s1:"68.34%",s2:"8.89%"},L:{s1:"76.38%",s2:"9.93%"}},
+    57:{C:{s1:"51.25%",s2:""},U:{s1:"56.38%",s2:""},R:{s1:"62.52%",s2:"8.18%"},E:{s1:"69.70%",s2:"9.12%"},L:{s1:"77.90%",s2:"10.19%"}},
+    58:{C:{s1:"52.25%",s2:""},U:{s1:"57.48%",s2:""},R:{s1:"63.74%",s2:"8.38%"},E:{s1:"71.06%",s2:"9.34%"},L:{s1:"79.42%",s2:"10.44%"}},
+    59:{C:{s1:"53.25%",s2:""},U:{s1:"58.58%",s2:""},R:{s1:"64.97%",s2:"8.59%"},E:{s1:"72.42%",s2:"9.57%"},L:{s1:"80.94%",s2:"10.70%"}},
+    60:{C:{s1:"54.25%",s2:""},U:{s1:"59.68%",s2:""},R:{s1:"66.19%",s2:"8.79%"},E:{s1:"73.78%",s2:"9.80%"},L:{s1:"82.46%",s2:"10.96%"}},
+    61:{C:{s1:"55.25%",s2:""},U:{s1:"60.78%",s2:""},R:{s1:"67.41%",s2:"9.00%"},E:{s1:"75.14%",s2:"10.03%"},L:{s1:"83.98%",s2:"11.21%"}},
+    62:{C:{s1:"56.25%",s2:""},U:{s1:"61.88%",s2:""},R:{s1:"68.62%",s2:"9.20%"},E:{s1:"76.50%",s2:"10.26%"},L:{s1:"85.50%",s2:"11.47%"}},
+    63:{C:{s1:"57.25%",s2:""},U:{s1:"62.98%",s2:""},R:{s1:"69.84%",s2:"9.41%"},E:{s1:"77.86%",s2:"10.49%"},L:{s1:"87.02%",s2:"11.72%"}},
+    64:{C:{s1:"58.25%",s2:""},U:{s1:"64.08%",s2:""},R:{s1:"71.06%",s2:"9.61%"},E:{s1:"79.22%",s2:"10.72%"},L:{s1:"88.54%",s2:"11.98%"}},
+    65:{C:{s1:"59.25%",s2:""},U:{s1:"65.18%",s2:""},R:{s1:"72.28%",s2:"9.82%"},E:{s1:"80.58%",s2:"10.95%"},L:{s1:"90.06%",s2:"12.23%"}},
+  },
+  hat: {
+    0:{C:{s1:"4.00%",s2:""},U:{s1:"4.40%",s2:""},R:{s1:"4.88%",s2:""},E:{s1:"5.44%",s2:""},L:{s1:"6.08%",s2:""}},
+    1:{C:{s1:"4.25%",s2:""},U:{s1:"4.68%",s2:""},R:{s1:"5.18%",s2:""},E:{s1:"5.78%",s2:""},L:{s1:"6.46%",s2:""}},
+    2:{C:{s1:"4.50%",s2:""},U:{s1:"4.95%",s2:""},R:{s1:"5.49%",s2:""},E:{s1:"6.12%",s2:""},L:{s1:"6.84%",s2:""}},
+    3:{C:{s1:"4.75%",s2:""},U:{s1:"5.23%",s2:""},R:{s1:"5.79%",s2:""},E:{s1:"6.46%",s2:""},L:{s1:"7.22%",s2:""}},
+    4:{C:{s1:"5.00%",s2:""},U:{s1:"5.50%",s2:""},R:{s1:"6.10%",s2:""},E:{s1:"6.80%",s2:""},L:{s1:"7.60%",s2:""}},
+    5:{C:{s1:"5.25%",s2:""},U:{s1:"5.78%",s2:""},R:{s1:"6.41%",s2:""},E:{s1:"7.14%",s2:""},L:{s1:"7.98%",s2:""}},
+    6:{C:{s1:"5.50%",s2:""},U:{s1:"6.05%",s2:""},R:{s1:"6.71%",s2:""},E:{s1:"7.48%",s2:""},L:{s1:"8.36%",s2:""}},
+    7:{C:{s1:"5.75%",s2:""},U:{s1:"6.33%",s2:""},R:{s1:"7.01%",s2:""},E:{s1:"7.82%",s2:""},L:{s1:"8.74%",s2:""}},
+    8:{C:{s1:"6.00%",s2:""},U:{s1:"6.60%",s2:""},R:{s1:"7.32%",s2:""},E:{s1:"8.16%",s2:""},L:{s1:"9.12%",s2:""}},
+    9:{C:{s1:"6.25%",s2:""},U:{s1:"6.88%",s2:""},R:{s1:"7.62%",s2:""},E:{s1:"8.50%",s2:""},L:{s1:"9.50%",s2:""}},
+    10:{C:{s1:"6.50%",s2:""},U:{s1:"7.15%",s2:""},R:{s1:"7.93%",s2:""},E:{s1:"8.84%",s2:""},L:{s1:"9.88%",s2:""}},
+    11:{C:{s1:"6.75%",s2:""},U:{s1:"7.43%",s2:""},R:{s1:"8.23%",s2:""},E:{s1:"9.18%",s2:""},L:{s1:"10.26%",s2:""}},
+    12:{C:{s1:"7.00%",s2:""},U:{s1:"7.70%",s2:""},R:{s1:"8.54%",s2:""},E:{s1:"9.52%",s2:""},L:{s1:"10.64%",s2:""}},
+    13:{C:{s1:"7.25%",s2:""},U:{s1:"7.98%",s2:""},R:{s1:"8.85%",s2:""},E:{s1:"9.86%",s2:""},L:{s1:"11.02%",s2:""}},
+    14:{C:{s1:"7.50%",s2:""},U:{s1:"8.25%",s2:""},R:{s1:"9.15%",s2:""},E:{s1:"10.20%",s2:""},L:{s1:"11.40%",s2:""}},
+    15:{C:{s1:"7.75%",s2:""},U:{s1:"8.53%",s2:""},R:{s1:"9.46%",s2:""},E:{s1:"10.54%",s2:""},L:{s1:"11.78%",s2:""}},
+    16:{C:{s1:"8.12%",s2:""},U:{s1:"8.94%",s2:""},R:{s1:"9.91%",s2:""},E:{s1:"11.05%",s2:""},L:{s1:"12.35%",s2:""}},
+    17:{C:{s1:"8.50%",s2:""},U:{s1:"9.35%",s2:""},R:{s1:"10.37%",s2:""},E:{s1:"11.56%",s2:""},L:{s1:"12.92%",s2:""}},
+    18:{C:{s1:"8.88%",s2:""},U:{s1:"9.76%",s2:""},R:{s1:"10.83%",s2:""},E:{s1:"12.07%",s2:""},L:{s1:"13.49%",s2:""}},
+    19:{C:{s1:"9.25%",s2:""},U:{s1:"10.18%",s2:""},R:{s1:"11.29%",s2:""},E:{s1:"12.58%",s2:""},L:{s1:"14.06%",s2:""}},
+    20:{C:{s1:"9.62%",s2:""},U:{s1:"10.59%",s2:""},R:{s1:"11.74%",s2:""},E:{s1:"13.09%",s2:""},L:{s1:"14.63%",s2:""}},
+    21:{C:{s1:"10.00%",s2:""},U:{s1:"11.00%",s2:""},R:{s1:"12.20%",s2:""},E:{s1:"13.60%",s2:""},L:{s1:"15.20%",s2:""}},
+    22:{C:{s1:"10.38%",s2:""},U:{s1:"11.41%",s2:""},R:{s1:"12.66%",s2:""},E:{s1:"14.11%",s2:""},L:{s1:"15.77%",s2:""}},
+    23:{C:{s1:"10.75%",s2:""},U:{s1:"11.83%",s2:""},R:{s1:"13.12%",s2:""},E:{s1:"14.62%",s2:""},L:{s1:"16.34%",s2:""}},
+    24:{C:{s1:"11.12%",s2:""},U:{s1:"12.24%",s2:""},R:{s1:"13.57%",s2:"0.03"},E:{s1:"15.13%",s2:"0.03"},L:{s1:"16.91%",s2:"0.03"}},
+    25:{C:{s1:"11.50%",s2:""},U:{s1:"12.65%",s2:""},R:{s1:"14.03%",s2:"0.04"},E:{s1:"15.64%",s2:"0.04"},L:{s1:"17.48%",s2:"0.04"}},
+    26:{C:{s1:"11.88%",s2:""},U:{s1:"13.06%",s2:""},R:{s1:"14.49%",s2:"0.06"},E:{s1:"16.15%",s2:"0.06"},L:{s1:"18.05%",s2:"0.06"}},
+    27:{C:{s1:"12.25%",s2:""},U:{s1:"13.48%",s2:""},R:{s1:"14.95%",s2:"0.07"},E:{s1:"16.66%",s2:"0.07"},L:{s1:"18.62%",s2:"0.07"}},
+    28:{C:{s1:"12.62%",s2:""},U:{s1:"13.89%",s2:""},R:{s1:"15.40%",s2:"0.08"},E:{s1:"17.17%",s2:"0.08"},L:{s1:"19.19%",s2:"0.08"}},
+    29:{C:{s1:"13.00%",s2:""},U:{s1:"14.30%",s2:""},R:{s1:"15.86%",s2:"0.09"},E:{s1:"17.68%",s2:"0.09"},L:{s1:"19.76%",s2:"0.09"}},
+    30:{C:{s1:"13.38%",s2:""},U:{s1:"14.71%",s2:""},R:{s1:"16.32%",s2:"0.1"},E:{s1:"18.19%",s2:"0.1"},L:{s1:"20.33%",s2:"0.1"}},
+    31:{C:{s1:"13.75%",s2:""},U:{s1:"15.13%",s2:""},R:{s1:"16.77%",s2:"0.11"},E:{s1:"18.70%",s2:"0.11"},L:{s1:"20.90%",s2:"0.11"}},
+    32:{C:{s1:"14.12%",s2:""},U:{s1:"15.54%",s2:""},R:{s1:"17.23%",s2:"0.13"},E:{s1:"19.21%",s2:"0.13"},L:{s1:"21.47%",s2:"0.13"}},
+    33:{C:{s1:"14.50%",s2:""},U:{s1:"15.95%",s2:""},R:{s1:"17.69%",s2:"0.14"},E:{s1:"19.72%",s2:"0.14"},L:{s1:"22.04%",s2:"0.14"}},
+    34:{C:{s1:"14.88%",s2:""},U:{s1:"16.36%",s2:""},R:{s1:"18.15%",s2:"0.15"},E:{s1:"20.23%",s2:"0.15"},L:{s1:"22.61%",s2:"0.15"}},
+    35:{C:{s1:"15.25%",s2:""},U:{s1:"16.78%",s2:""},R:{s1:"18.61%",s2:"0.16"},E:{s1:"20.74%",s2:"0.16"},L:{s1:"23.18%",s2:"0.16"}},
+    36:{C:{s1:"15.62%",s2:""},U:{s1:"17.19%",s2:""},R:{s1:"19.06%",s2:"0.17"},E:{s1:"21.25%",s2:"0.17"},L:{s1:"23.75%",s2:"0.17"}},
+    37:{C:{s1:"16.00%",s2:""},U:{s1:"17.60%",s2:""},R:{s1:"19.52%",s2:"0.18"},E:{s1:"21.76%",s2:"0.18"},L:{s1:"24.32%",s2:"0.18"}},
+    38:{C:{s1:"16.38%",s2:""},U:{s1:"18.01%",s2:""},R:{s1:"19.98%",s2:"0.2"},E:{s1:"22.27%",s2:"0.2"},L:{s1:"24.89%",s2:"0.2"}},
+    39:{C:{s1:"16.75%",s2:""},U:{s1:"18.43%",s2:""},R:{s1:"20.43%",s2:"0.21"},E:{s1:"22.78%",s2:"0.21"},L:{s1:"25.46%",s2:"0.21"}},
+    40:{C:{s1:"17.12%",s2:""},U:{s1:"18.84%",s2:""},R:{s1:"20.89%",s2:"0.22"},E:{s1:"23.29%",s2:"0.22"},L:{s1:"26.03%",s2:"0.22"}},
+    41:{C:{s1:"17.62%",s2:""},U:{s1:"19.39%",s2:""},R:{s1:"21.50%",s2:"0.23"},E:{s1:"23.97%",s2:"0.23"},L:{s1:"26.79%",s2:"0.23"}},
+    42:{C:{s1:"18.12%",s2:""},U:{s1:"19.94%",s2:""},R:{s1:"22.11%",s2:"0.24"},E:{s1:"24.65%",s2:"0.24"},L:{s1:"27.55%",s2:"0.24"}},
+    43:{C:{s1:"18.62%",s2:""},U:{s1:"20.49%",s2:""},R:{s1:"22.72%",s2:"0.25"},E:{s1:"25.33%",s2:"0.25"},L:{s1:"28.31%",s2:"0.25"}},
+    44:{C:{s1:"19.12%",s2:""},U:{s1:"21.04%",s2:""},R:{s1:"23.33%",s2:"0.27"},E:{s1:"26.01%",s2:"0.27"},L:{s1:"29.07%",s2:"0.27"}},
+    45:{C:{s1:"19.62%",s2:""},U:{s1:"21.59%",s2:""},R:{s1:"23.94%",s2:"0.28"},E:{s1:"26.69%",s2:"0.28"},L:{s1:"29.83%",s2:"0.28"}},
+    46:{C:{s1:"20.12%",s2:""},U:{s1:"22.14%",s2:""},R:{s1:"24.55%",s2:"0.29"},E:{s1:"27.37%",s2:"0.29"},L:{s1:"30.59%",s2:"0.29"}},
+    47:{C:{s1:"20.62%",s2:""},U:{s1:"22.69%",s2:""},R:{s1:"25.16%",s2:"0.3"},E:{s1:"28.05%",s2:"0.3"},L:{s1:"31.35%",s2:"0.3"}},
+    48:{C:{s1:"21.12%",s2:""},U:{s1:"23.24%",s2:""},R:{s1:"25.77%",s2:"0.31"},E:{s1:"28.73%",s2:"0.31"},L:{s1:"32.11%",s2:"0.31"}},
+    49:{C:{s1:"21.62%",s2:""},U:{s1:"23.79%",s2:""},R:{s1:"26.38%",s2:"0.32"},E:{s1:"29.41%",s2:"0.32"},L:{s1:"32.87%",s2:"0.32"}},
+    50:{C:{s1:"22.12%",s2:""},U:{s1:"24.34%",s2:""},R:{s1:"26.99%",s2:"0.34"},E:{s1:"30.09%",s2:"0.34"},L:{s1:"33.63%",s2:"0.34"}},
+    51:{C:{s1:"22.62%",s2:""},U:{s1:"24.89%",s2:""},R:{s1:"27.60%",s2:"0.35"},E:{s1:"30.77%",s2:"0.35"},L:{s1:"34.39%",s2:"0.35"}},
+    52:{C:{s1:"23.12%",s2:""},U:{s1:"25.44%",s2:""},R:{s1:"28.21%",s2:"0.36"},E:{s1:"31.45%",s2:"0.36"},L:{s1:"35.15%",s2:"0.36"}},
+    53:{C:{s1:"23.62%",s2:""},U:{s1:"25.99%",s2:""},R:{s1:"28.82%",s2:"0.37"},E:{s1:"32.13%",s2:"0.37"},L:{s1:"35.91%",s2:"0.37"}},
+    54:{C:{s1:"24.12%",s2:""},U:{s1:"26.54%",s2:""},R:{s1:"29.43%",s2:"0.38"},E:{s1:"32.81%",s2:"0.38"},L:{s1:"36.67%",s2:"0.38"}},
+    55:{C:{s1:"24.62%",s2:""},U:{s1:"27.09%",s2:""},R:{s1:"30.04%",s2:"0.39"},E:{s1:"33.49%",s2:"0.39"},L:{s1:"37.43%",s2:"0.39"}},
+    56:{C:{s1:"25.12%",s2:""},U:{s1:"27.64%",s2:""},R:{s1:"30.65%",s2:"0.41"},E:{s1:"34.17%",s2:"0.41"},L:{s1:"38.19%",s2:"0.41"}},
+    57:{C:{s1:"25.62%",s2:""},U:{s1:"28.19%",s2:""},R:{s1:"31.26%",s2:"0.42"},E:{s1:"34.85%",s2:"0.42"},L:{s1:"38.95%",s2:"0.42"}},
+    58:{C:{s1:"26.12%",s2:""},U:{s1:"28.74%",s2:""},R:{s1:"31.87%",s2:"0.43"},E:{s1:"35.53%",s2:"0.43"},L:{s1:"39.71%",s2:"0.43"}},
+    59:{C:{s1:"26.62%",s2:""},U:{s1:"29.29%",s2:""},R:{s1:"32.48%",s2:"0.44"},E:{s1:"36.21%",s2:"0.44"},L:{s1:"40.47%",s2:"0.44"}},
+    60:{C:{s1:"27.12%",s2:""},U:{s1:"29.84%",s2:""},R:{s1:"33.09%",s2:"0.45"},E:{s1:"36.89%",s2:"0.45"},L:{s1:"41.23%",s2:"0.45"}},
+    61:{C:{s1:"27.62%",s2:""},U:{s1:"30.39%",s2:""},R:{s1:"33.70%",s2:"0.46"},E:{s1:"37.57%",s2:"0.46"},L:{s1:"41.99%",s2:"0.46"}},
+    62:{C:{s1:"28.12%",s2:""},U:{s1:"30.94%",s2:""},R:{s1:"34.31%",s2:"0.48"},E:{s1:"38.25%",s2:"0.48"},L:{s1:"42.75%",s2:"0.48"}},
+    63:{C:{s1:"28.62%",s2:""},U:{s1:"31.49%",s2:""},R:{s1:"34.92%",s2:"0.49"},E:{s1:"38.93%",s2:"0.49"},L:{s1:"43.51%",s2:"0.49"}},
+    64:{C:{s1:"29.12%",s2:""},U:{s1:"32.04%",s2:""},R:{s1:"35.53%",s2:"0.5"},E:{s1:"39.61%",s2:"0.5"},L:{s1:"44.27%",s2:"0.5"}},
+    65:{C:{s1:"29.62%",s2:""},U:{s1:"32.59%",s2:""},R:{s1:"36.14%",s2:"0.51"},E:{s1:"40.29%",s2:"0.51"},L:{s1:"45.03%",s2:"0.51"}},
+  },
+  necklace: {
+    0:{C:{s1:"4.00%",s2:""},U:{s1:"4.40%",s2:""},R:{s1:"4.88%",s2:""},E:{s1:"5.44%",s2:""},L:{s1:"6.08%",s2:""}},
+    1:{C:{s1:"4.25%",s2:""},U:{s1:"4.68%",s2:""},R:{s1:"5.18%",s2:""},E:{s1:"5.78%",s2:""},L:{s1:"6.46%",s2:""}},
+    2:{C:{s1:"4.50%",s2:""},U:{s1:"4.95%",s2:""},R:{s1:"5.49%",s2:""},E:{s1:"6.12%",s2:""},L:{s1:"6.84%",s2:""}},
+    3:{C:{s1:"4.75%",s2:""},U:{s1:"5.23%",s2:""},R:{s1:"5.79%",s2:""},E:{s1:"6.46%",s2:""},L:{s1:"7.22%",s2:""}},
+    4:{C:{s1:"5.00%",s2:""},U:{s1:"5.50%",s2:""},R:{s1:"6.10%",s2:""},E:{s1:"6.80%",s2:""},L:{s1:"7.60%",s2:""}},
+    5:{C:{s1:"5.25%",s2:""},U:{s1:"5.78%",s2:""},R:{s1:"6.41%",s2:""},E:{s1:"7.14%",s2:""},L:{s1:"7.98%",s2:""}},
+    6:{C:{s1:"5.50%",s2:""},U:{s1:"6.05%",s2:""},R:{s1:"6.71%",s2:""},E:{s1:"7.48%",s2:""},L:{s1:"8.36%",s2:""}},
+    7:{C:{s1:"5.75%",s2:""},U:{s1:"6.33%",s2:""},R:{s1:"7.01%",s2:""},E:{s1:"7.82%",s2:""},L:{s1:"8.74%",s2:""}},
+    8:{C:{s1:"6.00%",s2:""},U:{s1:"6.60%",s2:""},R:{s1:"7.32%",s2:""},E:{s1:"8.16%",s2:""},L:{s1:"9.12%",s2:""}},
+    9:{C:{s1:"6.25%",s2:""},U:{s1:"6.88%",s2:""},R:{s1:"7.62%",s2:""},E:{s1:"8.50%",s2:""},L:{s1:"9.50%",s2:""}},
+    10:{C:{s1:"6.50%",s2:""},U:{s1:"7.15%",s2:""},R:{s1:"7.93%",s2:""},E:{s1:"8.84%",s2:""},L:{s1:"9.88%",s2:""}},
+    11:{C:{s1:"6.75%",s2:""},U:{s1:"7.43%",s2:""},R:{s1:"8.23%",s2:""},E:{s1:"9.18%",s2:""},L:{s1:"10.26%",s2:""}},
+    12:{C:{s1:"7.00%",s2:""},U:{s1:"7.70%",s2:""},R:{s1:"8.54%",s2:""},E:{s1:"9.52%",s2:""},L:{s1:"10.64%",s2:""}},
+    13:{C:{s1:"7.25%",s2:""},U:{s1:"7.98%",s2:""},R:{s1:"8.85%",s2:""},E:{s1:"9.86%",s2:""},L:{s1:"11.02%",s2:""}},
+    14:{C:{s1:"7.50%",s2:""},U:{s1:"8.25%",s2:""},R:{s1:"9.15%",s2:""},E:{s1:"10.20%",s2:""},L:{s1:"11.40%",s2:""}},
+    15:{C:{s1:"7.75%",s2:""},U:{s1:"8.53%",s2:""},R:{s1:"9.46%",s2:""},E:{s1:"10.54%",s2:""},L:{s1:"11.78%",s2:""}},
+    16:{C:{s1:"8.12%",s2:""},U:{s1:"8.94%",s2:""},R:{s1:"9.91%",s2:""},E:{s1:"11.05%",s2:""},L:{s1:"12.35%",s2:""}},
+    17:{C:{s1:"8.50%",s2:""},U:{s1:"9.35%",s2:""},R:{s1:"10.37%",s2:""},E:{s1:"11.56%",s2:""},L:{s1:"12.92%",s2:""}},
+    18:{C:{s1:"8.88%",s2:""},U:{s1:"9.76%",s2:""},R:{s1:"10.83%",s2:""},E:{s1:"12.07%",s2:""},L:{s1:"13.49%",s2:""}},
+    19:{C:{s1:"9.25%",s2:""},U:{s1:"10.18%",s2:""},R:{s1:"11.29%",s2:""},E:{s1:"12.58%",s2:""},L:{s1:"14.06%",s2:""}},
+    20:{C:{s1:"9.62%",s2:""},U:{s1:"10.59%",s2:""},R:{s1:"11.74%",s2:""},E:{s1:"13.09%",s2:""},L:{s1:"14.63%",s2:""}},
+    21:{C:{s1:"10.00%",s2:""},U:{s1:"11.00%",s2:""},R:{s1:"12.20%",s2:""},E:{s1:"13.60%",s2:""},L:{s1:"15.20%",s2:""}},
+    22:{C:{s1:"10.38%",s2:""},U:{s1:"11.41%",s2:""},R:{s1:"12.66%",s2:""},E:{s1:"14.11%",s2:""},L:{s1:"15.77%",s2:""}},
+    23:{C:{s1:"10.75%",s2:""},U:{s1:"11.83%",s2:""},R:{s1:"13.12%",s2:""},E:{s1:"14.62%",s2:""},L:{s1:"16.34%",s2:""}},
+    24:{C:{s1:"11.12%",s2:""},U:{s1:"12.24%",s2:""},R:{s1:"13.57%",s2:"5.82%"},E:{s1:"15.13%",s2:"6.49%"},L:{s1:"16.91%",s2:"7.25%"}},
+    25:{C:{s1:"11.50%",s2:""},U:{s1:"12.65%",s2:""},R:{s1:"14.03%",s2:"5.94%"},E:{s1:"15.64%",s2:"6.62%"},L:{s1:"17.48%",s2:"7.40%"}},
+    26:{C:{s1:"11.88%",s2:""},U:{s1:"13.06%",s2:""},R:{s1:"14.49%",s2:"6.06%"},E:{s1:"16.15%",s2:"6.76%"},L:{s1:"18.05%",s2:"7.55%"}},
+    27:{C:{s1:"12.25%",s2:""},U:{s1:"13.48%",s2:""},R:{s1:"14.95%",s2:"6.18%"},E:{s1:"16.66%",s2:"6.89%"},L:{s1:"18.62%",s2:"7.70%"}},
+    28:{C:{s1:"12.62%",s2:""},U:{s1:"13.89%",s2:""},R:{s1:"15.40%",s2:"6.30%"},E:{s1:"17.17%",s2:"7.03%"},L:{s1:"19.19%",s2:"7.85%"}},
+    29:{C:{s1:"13.00%",s2:""},U:{s1:"14.30%",s2:""},R:{s1:"15.86%",s2:"6.42%"},E:{s1:"17.68%",s2:"7.16%"},L:{s1:"19.76%",s2:"8.00%"}},
+    30:{C:{s1:"13.38%",s2:""},U:{s1:"14.71%",s2:""},R:{s1:"16.32%",s2:"6.54%"},E:{s1:"18.19%",s2:"7.30%"},L:{s1:"20.33%",s2:"8.15%"}},
+    31:{C:{s1:"13.75%",s2:""},U:{s1:"15.13%",s2:""},R:{s1:"16.77%",s2:"6.67%"},E:{s1:"18.70%",s2:"7.43%"},L:{s1:"20.90%",s2:"8.30%"}},
+    32:{C:{s1:"14.12%",s2:""},U:{s1:"15.54%",s2:""},R:{s1:"17.23%",s2:"6.79%"},E:{s1:"19.21%",s2:"7.56%"},L:{s1:"21.47%",s2:"8.45%"}},
+    33:{C:{s1:"14.50%",s2:""},U:{s1:"15.95%",s2:""},R:{s1:"17.69%",s2:"6.91%"},E:{s1:"19.72%",s2:"7.70%"},L:{s1:"22.04%",s2:"8.60%"}},
+    34:{C:{s1:"14.88%",s2:""},U:{s1:"16.36%",s2:""},R:{s1:"18.15%",s2:"7.03%"},E:{s1:"20.23%",s2:"7.83%"},L:{s1:"22.61%",s2:"8.76%"}},
+    35:{C:{s1:"15.25%",s2:""},U:{s1:"16.78%",s2:""},R:{s1:"18.61%",s2:"7.15%"},E:{s1:"20.74%",s2:"7.97%"},L:{s1:"23.18%",s2:"8.91%"}},
+    36:{C:{s1:"15.62%",s2:""},U:{s1:"17.19%",s2:""},R:{s1:"19.06%",s2:"7.27%"},E:{s1:"21.25%",s2:"8.10%"},L:{s1:"23.75%",s2:"9.06%"}},
+    37:{C:{s1:"16.00%",s2:""},U:{s1:"17.60%",s2:""},R:{s1:"19.52%",s2:"7.39%"},E:{s1:"21.76%",s2:"8.24%"},L:{s1:"24.32%",s2:"9.21%"}},
+    38:{C:{s1:"16.38%",s2:""},U:{s1:"18.01%",s2:""},R:{s1:"19.98%",s2:"7.51%"},E:{s1:"22.27%",s2:"8.37%"},L:{s1:"24.89%",s2:"9.36%"}},
+    39:{C:{s1:"16.75%",s2:""},U:{s1:"18.43%",s2:""},R:{s1:"20.43%",s2:"7.63%"},E:{s1:"22.78%",s2:"8.51%"},L:{s1:"25.46%",s2:"9.51%"}},
+    40:{C:{s1:"17.12%",s2:""},U:{s1:"18.84%",s2:""},R:{s1:"20.89%",s2:"7.75%"},E:{s1:"23.29%",s2:"8.64%"},L:{s1:"26.03%",s2:"9.66%"}},
+    41:{C:{s1:"17.62%",s2:""},U:{s1:"19.39%",s2:""},R:{s1:"21.50%",s2:"7.87%"},E:{s1:"23.97%",s2:"8.78%"},L:{s1:"26.79%",s2:"9.81%"}},
+    42:{C:{s1:"18.12%",s2:""},U:{s1:"19.94%",s2:""},R:{s1:"22.11%",s2:"7.99%"},E:{s1:"24.65%",s2:"8.91%"},L:{s1:"27.55%",s2:"9.96%"}},
+    43:{C:{s1:"18.62%",s2:""},U:{s1:"20.49%",s2:""},R:{s1:"22.72%",s2:"8.11%"},E:{s1:"25.33%",s2:"9.05%"},L:{s1:"28.31%",s2:"10.11%"}},
+    44:{C:{s1:"19.12%",s2:""},U:{s1:"21.04%",s2:""},R:{s1:"23.33%",s2:"8.23%"},E:{s1:"26.01%",s2:"9.18%"},L:{s1:"29.07%",s2:"10.26%"}},
+    45:{C:{s1:"19.62%",s2:""},U:{s1:"21.59%",s2:""},R:{s1:"23.94%",s2:"8.36%"},E:{s1:"26.69%",s2:"9.31%"},L:{s1:"29.83%",s2:"10.41%"}},
+    46:{C:{s1:"20.12%",s2:""},U:{s1:"22.14%",s2:""},R:{s1:"24.55%",s2:"8.48%"},E:{s1:"27.37%",s2:"9.45%"},L:{s1:"30.59%",s2:"10.56%"}},
+    47:{C:{s1:"20.62%",s2:""},U:{s1:"22.69%",s2:""},R:{s1:"25.16%",s2:"8.60%"},E:{s1:"28.05%",s2:"9.58%"},L:{s1:"31.35%",s2:"10.71%"}},
+    48:{C:{s1:"21.12%",s2:""},U:{s1:"23.24%",s2:""},R:{s1:"25.77%",s2:"8.72%"},E:{s1:"28.73%",s2:"9.72%"},L:{s1:"32.11%",s2:"10.86%"}},
+    49:{C:{s1:"21.62%",s2:""},U:{s1:"23.79%",s2:""},R:{s1:"26.38%",s2:"8.84%"},E:{s1:"29.41%",s2:"9.85%"},L:{s1:"32.87%",s2:"11.01%"}},
+    50:{C:{s1:"22.12%",s2:""},U:{s1:"24.34%",s2:""},R:{s1:"26.99%",s2:"8.96%"},E:{s1:"30.09%",s2:"9.99%"},L:{s1:"33.63%",s2:"11.16%"}},
+    51:{C:{s1:"22.62%",s2:""},U:{s1:"24.89%",s2:""},R:{s1:"27.60%",s2:"9.08%"},E:{s1:"30.77%",s2:"10.12%"},L:{s1:"34.39%",s2:"11.31%"}},
+    52:{C:{s1:"23.12%",s2:""},U:{s1:"25.44%",s2:""},R:{s1:"28.21%",s2:"9.20%"},E:{s1:"31.45%",s2:"10.26%"},L:{s1:"35.15%",s2:"11.46%"}},
+    53:{C:{s1:"23.62%",s2:""},U:{s1:"25.99%",s2:""},R:{s1:"28.82%",s2:"9.32%"},E:{s1:"32.13%",s2:"10.39%"},L:{s1:"35.91%",s2:"11.61%"}},
+    54:{C:{s1:"24.12%",s2:""},U:{s1:"26.54%",s2:""},R:{s1:"29.43%",s2:"9.44%"},E:{s1:"32.81%",s2:"10.53%"},L:{s1:"36.67%",s2:"11.76%"}},
+    55:{C:{s1:"24.62%",s2:""},U:{s1:"27.09%",s2:""},R:{s1:"30.04%",s2:"9.56%"},E:{s1:"33.49%",s2:"10.66%"},L:{s1:"37.43%",s2:"11.91%"}},
+    56:{C:{s1:"25.12%",s2:""},U:{s1:"27.64%",s2:""},R:{s1:"30.65%",s2:"9.68%"},E:{s1:"34.17%",s2:"10.79%"},L:{s1:"38.19%",s2:"12.06%"}},
+    57:{C:{s1:"25.62%",s2:""},U:{s1:"28.19%",s2:""},R:{s1:"31.26%",s2:"9.80%"},E:{s1:"34.85%",s2:"10.93%"},L:{s1:"38.95%",s2:"12.22%"}},
+    58:{C:{s1:"26.12%",s2:""},U:{s1:"28.74%",s2:""},R:{s1:"31.87%",s2:"9.92%"},E:{s1:"35.53%",s2:"11.06%"},L:{s1:"39.71%",s2:"12.37%"}},
+    59:{C:{s1:"26.62%",s2:""},U:{s1:"29.29%",s2:""},R:{s1:"32.48%",s2:"10.05%"},E:{s1:"36.21%",s2:"11.20%"},L:{s1:"40.47%",s2:"12.52%"}},
+    60:{C:{s1:"27.12%",s2:""},U:{s1:"29.84%",s2:""},R:{s1:"33.09%",s2:"10.17%"},E:{s1:"36.89%",s2:"11.33%"},L:{s1:"41.23%",s2:"12.67%"}},
+    61:{C:{s1:"27.62%",s2:""},U:{s1:"30.39%",s2:""},R:{s1:"33.70%",s2:"10.29%"},E:{s1:"37.57%",s2:"11.47%"},L:{s1:"41.99%",s2:"12.82%"}},
+    62:{C:{s1:"28.12%",s2:""},U:{s1:"30.94%",s2:""},R:{s1:"34.31%",s2:"10.41%"},E:{s1:"38.25%",s2:"11.60%"},L:{s1:"42.75%",s2:"12.97%"}},
+    63:{C:{s1:"28.62%",s2:""},U:{s1:"31.49%",s2:""},R:{s1:"34.92%",s2:"10.53%"},E:{s1:"38.93%",s2:"11.74%"},L:{s1:"43.51%",s2:"13.12%"}},
+    64:{C:{s1:"29.12%",s2:""},U:{s1:"32.04%",s2:""},R:{s1:"35.53%",s2:"10.65%"},E:{s1:"39.61%",s2:"11.87%"},L:{s1:"44.27%",s2:"13.27%"}},
+    65:{C:{s1:"29.62%",s2:""},U:{s1:"32.59%",s2:""},R:{s1:"36.14%",s2:"10.77%"},E:{s1:"40.29%",s2:"12.01%"},L:{s1:"45.03%",s2:"13.42%"}},
+  },
+  ring: {
+    0:{C:{s1:"2.00%",s2:""},U:{s1:"2.20%",s2:""},R:{s1:"2.44%",s2:""},E:{s1:"2.72%",s2:""},L:{s1:"3.04%",s2:""}},
+    1:{C:{s1:"2.12%",s2:""},U:{s1:"2.34%",s2:""},R:{s1:"2.59%",s2:""},E:{s1:"2.89%",s2:""},L:{s1:"3.23%",s2:""}},
+    2:{C:{s1:"2.25%",s2:""},U:{s1:"2.48%",s2:""},R:{s1:"2.75%",s2:""},E:{s1:"3.06%",s2:""},L:{s1:"3.42%",s2:""}},
+    3:{C:{s1:"2.38%",s2:""},U:{s1:"2.61%",s2:""},R:{s1:"2.90%",s2:""},E:{s1:"3.23%",s2:""},L:{s1:"3.61%",s2:""}},
+    4:{C:{s1:"2.50%",s2:""},U:{s1:"2.75%",s2:""},R:{s1:"3.05%",s2:""},E:{s1:"3.40%",s2:""},L:{s1:"3.80%",s2:""}},
+    5:{C:{s1:"2.62%",s2:""},U:{s1:"2.89%",s2:""},R:{s1:"3.20%",s2:""},E:{s1:"3.57%",s2:""},L:{s1:"3.99%",s2:""}},
+    6:{C:{s1:"2.75%",s2:""},U:{s1:"3.03%",s2:""},R:{s1:"3.35%",s2:""},E:{s1:"3.74%",s2:""},L:{s1:"4.18%",s2:""}},
+    7:{C:{s1:"2.88%",s2:""},U:{s1:"3.16%",s2:""},R:{s1:"3.51%",s2:""},E:{s1:"3.91%",s2:""},L:{s1:"4.37%",s2:""}},
+    8:{C:{s1:"3.00%",s2:""},U:{s1:"3.30%",s2:""},R:{s1:"3.66%",s2:""},E:{s1:"4.08%",s2:""},L:{s1:"4.56%",s2:""}},
+    9:{C:{s1:"3.12%",s2:""},U:{s1:"3.44%",s2:""},R:{s1:"3.81%",s2:""},E:{s1:"4.25%",s2:""},L:{s1:"4.75%",s2:""}},
+    10:{C:{s1:"3.25%",s2:""},U:{s1:"3.58%",s2:""},R:{s1:"3.96%",s2:""},E:{s1:"4.42%",s2:""},L:{s1:"4.94%",s2:""}},
+    11:{C:{s1:"3.38%",s2:""},U:{s1:"3.71%",s2:""},R:{s1:"4.12%",s2:""},E:{s1:"4.59%",s2:""},L:{s1:"5.13%",s2:""}},
+    12:{C:{s1:"3.50%",s2:""},U:{s1:"3.85%",s2:""},R:{s1:"4.27%",s2:""},E:{s1:"4.76%",s2:""},L:{s1:"5.32%",s2:""}},
+    13:{C:{s1:"3.62%",s2:""},U:{s1:"3.99%",s2:""},R:{s1:"4.42%",s2:""},E:{s1:"4.93%",s2:""},L:{s1:"5.51%",s2:""}},
+    14:{C:{s1:"3.75%",s2:""},U:{s1:"4.12%",s2:""},R:{s1:"4.58%",s2:""},E:{s1:"5.10%",s2:""},L:{s1:"5.70%",s2:""}},
+    15:{C:{s1:"3.88%",s2:""},U:{s1:"4.26%",s2:""},R:{s1:"4.73%",s2:""},E:{s1:"5.27%",s2:""},L:{s1:"5.89%",s2:""}},
+    16:{C:{s1:"4.06%",s2:""},U:{s1:"4.47%",s2:""},R:{s1:"4.96%",s2:""},E:{s1:"5.53%",s2:""},L:{s1:"6.17%",s2:""}},
+    17:{C:{s1:"4.25%",s2:""},U:{s1:"4.68%",s2:""},R:{s1:"5.18%",s2:""},E:{s1:"5.78%",s2:""},L:{s1:"6.46%",s2:""}},
+    18:{C:{s1:"4.44%",s2:""},U:{s1:"4.88%",s2:""},R:{s1:"5.41%",s2:""},E:{s1:"6.04%",s2:""},L:{s1:"6.75%",s2:""}},
+    19:{C:{s1:"4.62%",s2:""},U:{s1:"5.09%",s2:""},R:{s1:"5.64%",s2:""},E:{s1:"6.29%",s2:""},L:{s1:"7.03%",s2:""}},
+    20:{C:{s1:"4.81%",s2:""},U:{s1:"5.29%",s2:""},R:{s1:"5.87%",s2:""},E:{s1:"6.55%",s2:""},L:{s1:"7.32%",s2:""}},
+    21:{C:{s1:"5.00%",s2:""},U:{s1:"5.50%",s2:""},R:{s1:"6.10%",s2:""},E:{s1:"6.80%",s2:""},L:{s1:"7.60%",s2:""}},
+    22:{C:{s1:"5.19%",s2:""},U:{s1:"5.71%",s2:""},R:{s1:"6.33%",s2:""},E:{s1:"7.06%",s2:""},L:{s1:"7.88%",s2:""}},
+    23:{C:{s1:"5.38%",s2:""},U:{s1:"5.91%",s2:""},R:{s1:"6.56%",s2:""},E:{s1:"7.31%",s2:""},L:{s1:"8.17%",s2:""}},
+    24:{C:{s1:"5.56%",s2:""},U:{s1:"6.12%",s2:""},R:{s1:"6.79%",s2:"5.82%"},E:{s1:"7.57%",s2:"6.49%"},L:{s1:"8.46%",s2:"7.25%"}},
+    25:{C:{s1:"5.75%",s2:""},U:{s1:"6.33%",s2:""},R:{s1:"7.01%",s2:"5.92%"},E:{s1:"7.82%",s2:"6.60%"},L:{s1:"8.74%",s2:"7.38%"}},
+    26:{C:{s1:"5.94%",s2:""},U:{s1:"6.53%",s2:""},R:{s1:"7.24%",s2:"6.02%"},E:{s1:"8.08%",s2:"6.71%"},L:{s1:"9.03%",s2:"7.50%"}},
+    27:{C:{s1:"6.12%",s2:""},U:{s1:"6.74%",s2:""},R:{s1:"7.47%",s2:"6.12%"},E:{s1:"8.33%",s2:"6.82%"},L:{s1:"9.31%",s2:"7.63%"}},
+    28:{C:{s1:"6.31%",s2:""},U:{s1:"6.94%",s2:""},R:{s1:"7.70%",s2:"6.22%"},E:{s1:"8.59%",s2:"6.94%"},L:{s1:"9.60%",s2:"7.75%"}},
+    29:{C:{s1:"6.50%",s2:""},U:{s1:"7.15%",s2:""},R:{s1:"7.93%",s2:"6.32%"},E:{s1:"8.84%",s2:"7.05%"},L:{s1:"9.88%",s2:"7.88%"}},
+    30:{C:{s1:"6.69%",s2:""},U:{s1:"7.36%",s2:""},R:{s1:"8.16%",s2:"6.42%"},E:{s1:"9.10%",s2:"7.16%"},L:{s1:"10.17%",s2:"8.00%"}},
+    31:{C:{s1:"6.88%",s2:""},U:{s1:"7.56%",s2:""},R:{s1:"8.39%",s2:"6.53%"},E:{s1:"9.35%",s2:"7.27%"},L:{s1:"10.45%",s2:"8.13%"}},
+    32:{C:{s1:"7.06%",s2:""},U:{s1:"7.77%",s2:""},R:{s1:"8.62%",s2:"6.63%"},E:{s1:"9.61%",s2:"7.39%"},L:{s1:"10.73%",s2:"8.26%"}},
+    33:{C:{s1:"7.25%",s2:""},U:{s1:"7.98%",s2:""},R:{s1:"8.85%",s2:"6.73%"},E:{s1:"9.86%",s2:"7.50%"},L:{s1:"11.02%",s2:"8.38%"}},
+    34:{C:{s1:"7.44%",s2:""},U:{s1:"8.18%",s2:""},R:{s1:"9.07%",s2:"6.83%"},E:{s1:"10.12%",s2:"7.61%"},L:{s1:"11.30%",s2:"8.51%"}},
+    35:{C:{s1:"7.62%",s2:""},U:{s1:"8.39%",s2:""},R:{s1:"9.30%",s2:"6.93%"},E:{s1:"10.37%",s2:"7.72%"},L:{s1:"11.59%",s2:"8.63%"}},
+    36:{C:{s1:"7.81%",s2:""},U:{s1:"8.59%",s2:""},R:{s1:"9.53%",s2:"7.03%"},E:{s1:"10.62%",s2:"7.84%"},L:{s1:"11.88%",s2:"8.76%"}},
+    37:{C:{s1:"8.00%",s2:""},U:{s1:"8.80%",s2:""},R:{s1:"9.76%",s2:"7.13%"},E:{s1:"10.88%",s2:"7.95%"},L:{s1:"12.16%",s2:"8.88%"}},
+    38:{C:{s1:"8.19%",s2:""},U:{s1:"9.01%",s2:""},R:{s1:"9.99%",s2:"7.23%"},E:{s1:"11.14%",s2:"8.06%"},L:{s1:"12.45%",s2:"9.01%"}},
+    39:{C:{s1:"8.38%",s2:""},U:{s1:"9.21%",s2:""},R:{s1:"10.22%",s2:"7.33%"},E:{s1:"11.39%",s2:"8.17%"},L:{s1:"12.73%",s2:"9.13%"}},
+    40:{C:{s1:"8.56%",s2:""},U:{s1:"9.42%",s2:""},R:{s1:"10.45%",s2:"7.43%"},E:{s1:"11.65%",s2:"8.28%"},L:{s1:"13.02%",s2:"9.26%"}},
+    41:{C:{s1:"8.81%",s2:""},U:{s1:"9.69%",s2:""},R:{s1:"10.75%",s2:"7.53%"},E:{s1:"11.99%",s2:"8.40%"},L:{s1:"13.39%",s2:"9.38%"}},
+    42:{C:{s1:"9.06%",s2:""},U:{s1:"9.97%",s2:""},R:{s1:"11.06%",s2:"7.63%"},E:{s1:"12.33%",s2:"8.51%"},L:{s1:"13.78%",s2:"9.51%"}},
+    43:{C:{s1:"9.31%",s2:""},U:{s1:"10.24%",s2:""},R:{s1:"11.36%",s2:"7.73%"},E:{s1:"12.67%",s2:"8.62%"},L:{s1:"14.15%",s2:"9.64%"}},
+    44:{C:{s1:"9.56%",s2:""},U:{s1:"10.52%",s2:""},R:{s1:"11.67%",s2:"7.83%"},E:{s1:"13.01%",s2:"8.73%"},L:{s1:"14.54%",s2:"9.76%"}},
+    45:{C:{s1:"9.81%",s2:""},U:{s1:"10.79%",s2:""},R:{s1:"11.97%",s2:"7.94%"},E:{s1:"13.35%",s2:"8.85%"},L:{s1:"14.92%",s2:"9.89%"}},
+    46:{C:{s1:"10.06%",s2:""},U:{s1:"11.07%",s2:""},R:{s1:"12.28%",s2:"8.04%"},E:{s1:"13.69%",s2:"8.96%"},L:{s1:"15.29%",s2:"10.01%"}},
+    47:{C:{s1:"10.31%",s2:""},U:{s1:"11.34%",s2:""},R:{s1:"12.58%",s2:"8.14%"},E:{s1:"14.03%",s2:"9.07%"},L:{s1:"15.68%",s2:"10.14%"}},
+    48:{C:{s1:"10.56%",s2:""},U:{s1:"11.62%",s2:""},R:{s1:"12.89%",s2:"8.24%"},E:{s1:"14.37%",s2:"9.18%"},L:{s1:"16.05%",s2:"10.26%"}},
+    49:{C:{s1:"10.81%",s2:""},U:{s1:"11.89%",s2:""},R:{s1:"13.19%",s2:"8.34%"},E:{s1:"14.71%",s2:"9.30%"},L:{s1:"16.43%",s2:"10.39%"}},
+    50:{C:{s1:"11.06%",s2:""},U:{s1:"12.17%",s2:""},R:{s1:"13.50%",s2:"8.44%"},E:{s1:"15.05%",s2:"9.41%"},L:{s1:"16.82%",s2:"10.51%"}},
+    51:{C:{s1:"11.31%",s2:""},U:{s1:"12.44%",s2:""},R:{s1:"13.80%",s2:"8.54%"},E:{s1:"15.39%",s2:"9.52%"},L:{s1:"17.20%",s2:"10.64%"}},
+    52:{C:{s1:"11.56%",s2:""},U:{s1:"12.72%",s2:""},R:{s1:"14.11%",s2:"8.64%"},E:{s1:"15.73%",s2:"9.63%"},L:{s1:"17.57%",s2:"10.77%"}},
+    53:{C:{s1:"11.81%",s2:""},U:{s1:"12.99%",s2:""},R:{s1:"14.41%",s2:"8.74%"},E:{s1:"16.07%",s2:"9.74%"},L:{s1:"17.96%",s2:"10.89%"}},
+    54:{C:{s1:"12.06%",s2:""},U:{s1:"13.27%",s2:""},R:{s1:"14.72%",s2:"8.84%"},E:{s1:"16.41%",s2:"9.86%"},L:{s1:"18.34%",s2:"11.02%"}},
+    55:{C:{s1:"12.31%",s2:""},U:{s1:"13.54%",s2:""},R:{s1:"15.02%",s2:"8.94%"},E:{s1:"16.75%",s2:"9.97%"},L:{s1:"18.71%",s2:"11.14%"}},
+    56:{C:{s1:"12.56%",s2:""},U:{s1:"13.82%",s2:""},R:{s1:"15.33%",s2:"9.04%"},E:{s1:"17.09%",s2:"10.08%"},L:{s1:"19.09%",s2:"11.27%"}},
+    57:{C:{s1:"12.81%",s2:""},U:{s1:"14.09%",s2:""},R:{s1:"15.63%",s2:"9.14%"},E:{s1:"17.43%",s2:"10.19%"},L:{s1:"19.48%",s2:"11.39%"}},
+    58:{C:{s1:"13.06%",s2:""},U:{s1:"14.37%",s2:""},R:{s1:"15.94%",s2:"9.24%"},E:{s1:"17.77%",s2:"10.31%"},L:{s1:"19.86%",s2:"11.52%"}},
+    59:{C:{s1:"13.31%",s2:""},U:{s1:"14.64%",s2:""},R:{s1:"16.24%",s2:"9.35%"},E:{s1:"18.11%",s2:"10.42%"},L:{s1:"20.23%",s2:"11.64%"}},
+    60:{C:{s1:"13.56%",s2:""},U:{s1:"14.92%",s2:""},R:{s1:"16.55%",s2:"9.45%"},E:{s1:"18.45%",s2:"10.53%"},L:{s1:"20.62%",s2:"11.77%"}},
+    61:{C:{s1:"13.81%",s2:""},U:{s1:"15.19%",s2:""},R:{s1:"16.85%",s2:"9.55%"},E:{s1:"18.79%",s2:"10.64%"},L:{s1:"21.00%",s2:"11.89%"}},
+    62:{C:{s1:"14.06%",s2:""},U:{s1:"15.47%",s2:""},R:{s1:"17.16%",s2:"9.65%"},E:{s1:"19.12%",s2:"10.75%"},L:{s1:"21.38%",s2:"12.02%"}},
+    63:{C:{s1:"14.31%",s2:""},U:{s1:"15.74%",s2:""},R:{s1:"17.46%",s2:"9.75%"},E:{s1:"19.46%",s2:"10.87%"},L:{s1:"21.75%",s2:"12.15%"}},
+    64:{C:{s1:"14.56%",s2:""},U:{s1:"16.02%",s2:""},R:{s1:"17.77%",s2:"9.85%"},E:{s1:"19.80%",s2:"10.98%"},L:{s1:"22.14%",s2:"12.27%"}},
+    65:{C:{s1:"14.81%",s2:""},U:{s1:"16.29%",s2:""},R:{s1:"18.07%",s2:"9.95%"},E:{s1:"20.15%",s2:"11.09%"},L:{s1:"22.52%",s2:"12.40%"}},
+  },
+  waist: {
+    0:{C:{s1:"8.00%",s2:""},U:{s1:"8.80%",s2:""},R:{s1:"9.76%",s2:""},E:{s1:"10.88%",s2:""},L:{s1:"12.16%",s2:""}},
+    1:{C:{s1:"8.50%",s2:""},U:{s1:"9.35%",s2:""},R:{s1:"10.37%",s2:""},E:{s1:"11.56%",s2:""},L:{s1:"12.92%",s2:""}},
+    2:{C:{s1:"9.00%",s2:""},U:{s1:"9.90%",s2:""},R:{s1:"10.98%",s2:""},E:{s1:"12.24%",s2:""},L:{s1:"13.68%",s2:""}},
+    3:{C:{s1:"9.50%",s2:""},U:{s1:"10.45%",s2:""},R:{s1:"11.59%",s2:""},E:{s1:"12.92%",s2:""},L:{s1:"14.44%",s2:""}},
+    4:{C:{s1:"10.00%",s2:""},U:{s1:"11.00%",s2:""},R:{s1:"12.20%",s2:""},E:{s1:"13.60%",s2:""},L:{s1:"15.20%",s2:""}},
+    5:{C:{s1:"10.50%",s2:""},U:{s1:"11.55%",s2:""},R:{s1:"12.81%",s2:""},E:{s1:"14.28%",s2:""},L:{s1:"15.96%",s2:""}},
+    6:{C:{s1:"11.00%",s2:""},U:{s1:"12.10%",s2:""},R:{s1:"13.42%",s2:""},E:{s1:"14.96%",s2:""},L:{s1:"16.72%",s2:""}},
+    7:{C:{s1:"11.50%",s2:""},U:{s1:"12.65%",s2:""},R:{s1:"14.03%",s2:""},E:{s1:"15.64%",s2:""},L:{s1:"17.48%",s2:""}},
+    8:{C:{s1:"12.00%",s2:""},U:{s1:"13.20%",s2:""},R:{s1:"14.64%",s2:""},E:{s1:"16.32%",s2:""},L:{s1:"18.24%",s2:""}},
+    9:{C:{s1:"12.50%",s2:""},U:{s1:"13.75%",s2:""},R:{s1:"15.25%",s2:""},E:{s1:"17.00%",s2:""},L:{s1:"19.00%",s2:""}},
+    10:{C:{s1:"13.00%",s2:""},U:{s1:"14.30%",s2:""},R:{s1:"15.86%",s2:""},E:{s1:"17.68%",s2:""},L:{s1:"19.76%",s2:""}},
+    11:{C:{s1:"13.50%",s2:""},U:{s1:"14.85%",s2:""},R:{s1:"16.47%",s2:""},E:{s1:"18.36%",s2:""},L:{s1:"20.52%",s2:""}},
+    12:{C:{s1:"14.00%",s2:""},U:{s1:"15.40%",s2:""},R:{s1:"17.08%",s2:""},E:{s1:"19.04%",s2:""},L:{s1:"21.28%",s2:""}},
+    13:{C:{s1:"14.50%",s2:""},U:{s1:"15.95%",s2:""},R:{s1:"17.69%",s2:""},E:{s1:"19.72%",s2:""},L:{s1:"22.04%",s2:""}},
+    14:{C:{s1:"15.00%",s2:""},U:{s1:"16.50%",s2:""},R:{s1:"18.30%",s2:""},E:{s1:"20.40%",s2:""},L:{s1:"22.80%",s2:""}},
+    15:{C:{s1:"15.50%",s2:""},U:{s1:"17.05%",s2:""},R:{s1:"18.91%",s2:""},E:{s1:"21.08%",s2:""},L:{s1:"23.56%",s2:""}},
+    16:{C:{s1:"16.25%",s2:""},U:{s1:"17.88%",s2:""},R:{s1:"19.82%",s2:""},E:{s1:"22.10%",s2:""},L:{s1:"24.70%",s2:""}},
+    17:{C:{s1:"17.00%",s2:""},U:{s1:"18.70%",s2:""},R:{s1:"20.74%",s2:""},E:{s1:"23.12%",s2:""},L:{s1:"25.84%",s2:""}},
+    18:{C:{s1:"17.75%",s2:""},U:{s1:"19.53%",s2:""},R:{s1:"21.66%",s2:""},E:{s1:"24.14%",s2:""},L:{s1:"26.98%",s2:""}},
+    19:{C:{s1:"18.50%",s2:""},U:{s1:"20.35%",s2:""},R:{s1:"22.57%",s2:""},E:{s1:"25.16%",s2:""},L:{s1:"28.12%",s2:""}},
+    20:{C:{s1:"19.25%",s2:""},U:{s1:"21.18%",s2:""},R:{s1:"23.48%",s2:""},E:{s1:"26.18%",s2:""},L:{s1:"29.26%",s2:""}},
+    21:{C:{s1:"20.00%",s2:""},U:{s1:"22.00%",s2:""},R:{s1:"24.40%",s2:""},E:{s1:"27.20%",s2:""},L:{s1:"30.40%",s2:""}},
+    22:{C:{s1:"20.75%",s2:""},U:{s1:"22.83%",s2:""},R:{s1:"25.31%",s2:""},E:{s1:"28.22%",s2:""},L:{s1:"31.54%",s2:""}},
+    23:{C:{s1:"21.50%",s2:""},U:{s1:"23.65%",s2:""},R:{s1:"26.23%",s2:""},E:{s1:"29.24%",s2:""},L:{s1:"32.68%",s2:""}},
+    24:{C:{s1:"22.25%",s2:""},U:{s1:"24.48%",s2:""},R:{s1:"27.14%",s2:"6.65%"},E:{s1:"30.26%",s2:"7.41%"},L:{s1:"33.82%",s2:"8.29%"}},
+    25:{C:{s1:"23.00%",s2:""},U:{s1:"25.30%",s2:""},R:{s1:"28.06%",s2:"6.89%"},E:{s1:"31.28%",s2:"7.68%"},L:{s1:"34.96%",s2:"8.59%"}},
+    26:{C:{s1:"23.75%",s2:""},U:{s1:"26.13%",s2:""},R:{s1:"28.97%",s2:"7.13%"},E:{s1:"32.30%",s2:"7.95%"},L:{s1:"36.10%",s2:"8.89%"}},
+    27:{C:{s1:"24.50%",s2:""},U:{s1:"26.95%",s2:""},R:{s1:"29.89%",s2:"7.37%"},E:{s1:"33.32%",s2:"8.22%"},L:{s1:"37.24%",s2:"9.19%"}},
+    28:{C:{s1:"25.25%",s2:""},U:{s1:"27.78%",s2:""},R:{s1:"30.80%",s2:"7.62%"},E:{s1:"34.34%",s2:"8.49%"},L:{s1:"38.38%",s2:"9.49%"}},
+    29:{C:{s1:"26.00%",s2:""},U:{s1:"28.60%",s2:""},R:{s1:"31.72%",s2:"7.86%"},E:{s1:"35.36%",s2:"8.76%"},L:{s1:"39.52%",s2:"9.79%"}},
+    30:{C:{s1:"26.75%",s2:""},U:{s1:"29.43%",s2:""},R:{s1:"32.63%",s2:"8.10%"},E:{s1:"36.38%",s2:"9.03%"},L:{s1:"40.66%",s2:"10.09%"}},
+    31:{C:{s1:"27.50%",s2:""},U:{s1:"30.25%",s2:""},R:{s1:"33.55%",s2:"8.34%"},E:{s1:"37.40%",s2:"9.30%"},L:{s1:"41.80%",s2:"10.39%"}},
+    32:{C:{s1:"28.25%",s2:""},U:{s1:"31.08%",s2:""},R:{s1:"34.46%",s2:"8.58%"},E:{s1:"38.42%",s2:"9.57%"},L:{s1:"42.94%",s2:"10.69%"}},
+    33:{C:{s1:"29.00%",s2:""},U:{s1:"31.90%",s2:""},R:{s1:"35.38%",s2:"8.82%"},E:{s1:"39.44%",s2:"9.84%"},L:{s1:"44.08%",s2:"10.99%"}},
+    34:{C:{s1:"29.75%",s2:""},U:{s1:"32.73%",s2:""},R:{s1:"36.30%",s2:"9.06%"},E:{s1:"40.46%",s2:"10.10%"},L:{s1:"45.22%",s2:"11.29%"}},
+    35:{C:{s1:"30.50%",s2:""},U:{s1:"33.55%",s2:""},R:{s1:"37.21%",s2:"9.31%"},E:{s1:"41.48%",s2:"10.37%"},L:{s1:"46.36%",s2:"11.59%"}},
+    36:{C:{s1:"31.25%",s2:""},U:{s1:"34.38%",s2:""},R:{s1:"38.12%",s2:"9.55%"},E:{s1:"42.50%",s2:"10.64%"},L:{s1:"47.50%",s2:"11.90%"}},
+    37:{C:{s1:"32.00%",s2:""},U:{s1:"35.20%",s2:""},R:{s1:"39.04%",s2:"9.79%"},E:{s1:"43.52%",s2:"10.91%"},L:{s1:"48.64%",s2:"12.20%"}},
+    38:{C:{s1:"32.75%",s2:""},U:{s1:"36.03%",s2:""},R:{s1:"39.95%",s2:"10.03%"},E:{s1:"44.54%",s2:"11.18%"},L:{s1:"49.78%",s2:"12.50%"}},
+    39:{C:{s1:"33.50%",s2:""},U:{s1:"36.85%",s2:""},R:{s1:"40.87%",s2:"10.27%"},E:{s1:"45.56%",s2:"11.45%"},L:{s1:"50.92%",s2:"12.80%"}},
+    40:{C:{s1:"34.25%",s2:""},U:{s1:"37.68%",s2:""},R:{s1:"41.78%",s2:"10.51%"},E:{s1:"46.58%",s2:"11.72%"},L:{s1:"52.06%",s2:"13.10%"}},
+    41:{C:{s1:"35.25%",s2:""},U:{s1:"38.78%",s2:""},R:{s1:"43.01%",s2:"10.75%"},E:{s1:"47.94%",s2:"11.99%"},L:{s1:"53.58%",s2:"13.40%"}},
+    42:{C:{s1:"36.25%",s2:""},U:{s1:"39.88%",s2:""},R:{s1:"44.23%",s2:"11.00%"},E:{s1:"49.30%",s2:"12.26%"},L:{s1:"55.10%",s2:"13.70%"}},
+    43:{C:{s1:"37.25%",s2:""},U:{s1:"40.98%",s2:""},R:{s1:"45.45%",s2:"11.24%"},E:{s1:"50.66%",s2:"12.53%"},L:{s1:"56.62%",s2:"14.00%"}},
+    44:{C:{s1:"38.25%",s2:""},U:{s1:"42.08%",s2:""},R:{s1:"46.66%",s2:"11.48%"},E:{s1:"52.02%",s2:"12.80%"},L:{s1:"58.14%",s2:"14.30%"}},
+    45:{C:{s1:"39.25%",s2:""},U:{s1:"43.18%",s2:""},R:{s1:"47.88%",s2:"11.72%"},E:{s1:"53.38%",s2:"13.07%"},L:{s1:"59.66%",s2:"14.60%"}},
+    46:{C:{s1:"40.25%",s2:""},U:{s1:"44.28%",s2:""},R:{s1:"49.10%",s2:"11.96%"},E:{s1:"54.74%",s2:"13.33%"},L:{s1:"61.18%",s2:"14.90%"}},
+    47:{C:{s1:"41.25%",s2:""},U:{s1:"45.38%",s2:""},R:{s1:"50.32%",s2:"12.20%"},E:{s1:"56.10%",s2:"13.60%"},L:{s1:"62.70%",s2:"15.20%"}},
+    48:{C:{s1:"42.25%",s2:""},U:{s1:"46.48%",s2:""},R:{s1:"51.55%",s2:"12.45%"},E:{s1:"57.46%",s2:"13.87%"},L:{s1:"64.22%",s2:"15.51%"}},
+    49:{C:{s1:"43.25%",s2:""},U:{s1:"47.58%",s2:""},R:{s1:"52.77%",s2:"12.69%"},E:{s1:"58.82%",s2:"14.14%"},L:{s1:"65.74%",s2:"15.81%"}},
+    50:{C:{s1:"44.25%",s2:""},U:{s1:"48.68%",s2:""},R:{s1:"53.98%",s2:"12.93%"},E:{s1:"60.18%",s2:"14.41%"},L:{s1:"67.26%",s2:"16.11%"}},
+    51:{C:{s1:"45.25%",s2:""},U:{s1:"49.78%",s2:""},R:{s1:"55.20%",s2:"13.17%"},E:{s1:"61.54%",s2:"14.68%"},L:{s1:"68.78%",s2:"16.41%"}},
+    52:{C:{s1:"46.25%",s2:""},U:{s1:"50.88%",s2:""},R:{s1:"56.42%",s2:"13.41%"},E:{s1:"62.90%",s2:"14.95%"},L:{s1:"70.30%",s2:"16.71%"}},
+    53:{C:{s1:"47.25%",s2:""},U:{s1:"51.98%",s2:""},R:{s1:"57.64%",s2:"13.65%"},E:{s1:"64.26%",s2:"15.22%"},L:{s1:"71.82%",s2:"17.01%"}},
+    54:{C:{s1:"48.25%",s2:""},U:{s1:"53.08%",s2:""},R:{s1:"58.87%",s2:"13.89%"},E:{s1:"65.62%",s2:"15.49%"},L:{s1:"73.34%",s2:"17.31%"}},
+    55:{C:{s1:"49.25%",s2:""},U:{s1:"54.18%",s2:""},R:{s1:"60.09%",s2:"14.14%"},E:{s1:"66.98%",s2:"15.76%"},L:{s1:"74.86%",s2:"17.61%"}},
+    56:{C:{s1:"50.25%",s2:""},U:{s1:"55.28%",s2:""},R:{s1:"61.30%",s2:"14.38%"},E:{s1:"68.34%",s2:"16.03%"},L:{s1:"76.38%",s2:"17.91%"}},
+    57:{C:{s1:"51.25%",s2:""},U:{s1:"56.38%",s2:""},R:{s1:"62.52%",s2:"14.62%"},E:{s1:"69.70%",s2:"16.30%"},L:{s1:"77.90%",s2:"18.21%"}},
+    58:{C:{s1:"52.25%",s2:""},U:{s1:"57.48%",s2:""},R:{s1:"63.74%",s2:"14.86%"},E:{s1:"71.06%",s2:"16.56%"},L:{s1:"79.42%",s2:"18.51%"}},
+    59:{C:{s1:"53.25%",s2:""},U:{s1:"58.58%",s2:""},R:{s1:"64.97%",s2:"15.10%"},E:{s1:"72.42%",s2:"16.83%"},L:{s1:"80.94%",s2:"18.81%"}},
+    60:{C:{s1:"54.25%",s2:""},U:{s1:"59.68%",s2:""},R:{s1:"66.19%",s2:"15.34%"},E:{s1:"73.78%",s2:"17.10%"},L:{s1:"82.46%",s2:"19.12%"}},
+    61:{C:{s1:"55.25%",s2:""},U:{s1:"60.78%",s2:""},R:{s1:"67.41%",s2:"15.58%"},E:{s1:"75.14%",s2:"17.37%"},L:{s1:"83.98%",s2:"19.42%"}},
+    62:{C:{s1:"56.25%",s2:""},U:{s1:"61.88%",s2:""},R:{s1:"68.62%",s2:"15.83%"},E:{s1:"76.50%",s2:"17.64%"},L:{s1:"85.50%",s2:"19.72%"}},
+    63:{C:{s1:"57.25%",s2:""},U:{s1:"62.98%",s2:""},R:{s1:"69.84%",s2:"16.07%"},E:{s1:"77.86%",s2:"17.91%"},L:{s1:"87.02%",s2:"20.02%"}},
+    64:{C:{s1:"58.25%",s2:""},U:{s1:"64.08%",s2:""},R:{s1:"71.06%",s2:"16.31%"},E:{s1:"79.22%",s2:"18.18%"},L:{s1:"88.54%",s2:"20.32%"}},
+    65:{C:{s1:"59.25%",s2:""},U:{s1:"65.18%",s2:""},R:{s1:"72.28%",s2:"16.55%"},E:{s1:"80.58%",s2:"18.45%"},L:{s1:"90.06%",s2:"20.62%"}},
+  },
+};
+const ITEM_LEVELS = {
+  weapon:["2","3","4","4","5","6","8","8","9","10","10","11","12","14","14","15","16","16","17","18","20","20","21","22","24","27","29","30","33","35","36","39","40","42","45","46","48","51","52","54","57","58","60","63","64","66","69","70","72","74","76","78","80","82","84","86","88","90","93","95","96","99","102","105","107","110"],
+  armor:["2","3","4","4","5","6","8","8","9","10","10","11","12","14","14","15","16","16","17","18","20","20","21","22","24","27","29","30","33","35","36","39","40","42","45","46","48","51","52","54","57","58","60","63","64","66","69","70","72","74","76","78","80","82","84","86","88","90","93","95","96","99","102","105","107","110"],
+  glove:["2","3","3","3","4","4","4","5","5","5","6","6","6","8","8","8","9","9","10","10","10","11","11","11","14","14","15","16","17","18","20","20","21","22","23","24","26","26","27","28","29","30","32","32","33","34","35","36","36","38","39","40","41","41","42","44","45","46","47","48","50","51","52","53","54","56"],
+  feet:["2","3","3","3","4","4","4","5","5","5","6","6","6","8","8","8","9","9","10","10","10","11","11","11","14","14","15","16","17","18","20","20","21","22","23","24","26","26","27","28","29","30","32","32","33","34","35","36","36","38","39","40","41","41","42","44","45","46","47","48","50","51","52","53","54","56"],
+  hat:["2","3","3","3","4","4","4","5","5","5","6","6","6","8","8","8","9","9","10","10","10","11","11","11","14","14","15","16","17","18","20","20","21","22","23","24","26","26","27","28","29","30","32","32","33","34","35","36","36","38","39","40","41","41","42","44","45","46","47","48","50","51","52","53","54","56"],
+  necklace:["2","3","3","3","4","4","4","5","5","5","6","6","6","8","8","8","9","9","10","10","10","11","11","11","14","14","15","16","17","18","20","20","21","22","23","24","26","26","27","28","29","30","32","32","33","34","35","36","36","38","39","40","41","41","42","44","45","46","47","48","50","51","52","53","54","56"],
+  ring:["2","3","3","3","4","4","4","5","5","5","6","6","6","8","8","8","9","9","10","10","10","11","11","11","14","14","15","16","17","18","20","20","21","22","23","24","26","26","27","28","29","30","32","32","33","34","35","36","36","38","39","40","41","41","42","44","45","46","47","48","50","51","52","53","54","56"],
+  waist:["2","3","3","3","4","4","4","5","5","5","6","6","6","8","8","8","9","9","10","10","10","11","11","11","14","14","15","16","17","18","20","20","21","22","23","24","26","26","27","28","29","30","32","32","33","34","35","36","36","38","39","40","41","41","42","44","45","46","47","48","50","51","52","53","54","56"],
+};
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+let rdPending = null;
+
+let state = {
+  chapter: 1,
+  bossIdx: 0,
+  gear: {},
+  mobDropDone: false,
+  log: [],
+  stats: { total:0, upgrades:0, byRarity:{Common:0,Uncommon:0,Rare:0,Epic:0,Legendary:0} },
+  customProb: null,
+};
+
+// Wave counts: Ch1=30, Ch2=45, Ch3=60, Ch4=75, Ch5-24=90 (each cycle=5 waves: 3 mob+skip+boss)
+function totalBosses(ch) {
+  if (ch === 1) return 6;
+  if (ch === 2) return 9;
+  if (ch === 3) return 12;
+  if (ch === 4) return 15;
+  return 18; // ch 5-24 = 90 waves
+}
+function wavesInChapter(ch)  { return totalBosses(ch) * 5; }
+function isFinalBoss(ch, idx){ return idx === totalBosses(ch) - 1; }
+
+// ═══════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════
+function rarityBadge(rarity) {
+  const sh = {Common:'C',Uncommon:'U',Rare:'R',Epic:'E',Legendary:'L'}[rarity] || '?';
+  return `<span class="gear-rarity-badge badge-${sh}">${rarity}</span>`;
+}
+
+function rollRarity(ch, isFinal) {
+  const rates = (state.customProb || DROP_RATES)[probGroup(ch)];
+  const r = Math.random() * 100;
+  let acc = 0;
+  for (let i = 0; i < 5; i++) {
+    acc += rates[i];
+    if (r < acc) return RARITIES[i];
+  }
+  return RARITIES[4];
+}
+
+function capRarityForMob(rarity) {
+  // Mob wave capped at Rare: redistribute Epic+Legendary into Rare
+  if (rarity === 'Epic' || rarity === 'Legendary') return 'Rare';
+  return rarity;
+}
+
+function rollSlot() {
+  const emptySlots = SLOTS.filter(sl => !state.gear[sl.id]);
+  const pool = emptySlots.length > 0 ? emptySlots : SLOTS;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function pickItem(slotId, ch) {
+  const pool = CH_ITEMS[slotId][ch] || ITEM_POOLS[slotId];
+  if (!pool || pool.length === 0) return ITEM_POOLS[slotId][0];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// ═══════════════════════════════════════════════════════
+//  POPUP HELPERS — Hướng B
+// ═══════════════════════════════════════════════════════
+function parseStatVal(v) {
+  if (!v || v === '—') return null;
+  return parseFloat(v.replace('%',''));
+}
+
+function anyStatHigher(slotId, newIdx, newRarity, oldIdx, oldRarity) {
+  const RS = {Common:'C',Uncommon:'U',Rare:'R',Epic:'E',Legendary:'L'};
+  const nSt = ITEM_STATS[slotId]?.[newIdx]?.[RS[newRarity]];
+  const oSt = ITEM_STATS[slotId]?.[oldIdx]?.[RS[oldRarity]];
+  if (!nSt || !oSt) return false;
+  const s1n = parseStatVal(nSt.s1), s1o = parseStatVal(oSt.s1);
+  const s2n = parseStatVal(nSt.s2), s2o = parseStatVal(oSt.s2);
+  if (s1n != null && s1o != null && s1n > s1o) return true;
+  if (s2n != null && s2n > (s2o ?? 0)) return true;
+  return false;
+}
+
+function rdStatHtml(slotId, itemIdx, rarity, cmpIdx, cmpRarity) {
+  const RS = {Common:'C',Uncommon:'U',Rare:'R',Epic:'E',Legendary:'L'};
+  const labels = SLOT_STAT_LABELS[slotId] || {};
+  const st = ITEM_STATS[slotId]?.[itemIdx]?.[RS[rarity]];
+  if (!st) return '';
+  const cmpSt = (cmpIdx != null && cmpRarity) ? ITEM_STATS[slotId]?.[cmpIdx]?.[RS[cmpRarity]] : null;
+  const showS2 = ['Rare','Epic','Legendary'].includes(rarity);
+
+  function statRow(label, val, cmpVal) {
+    if (!label) return '';
+    const parsed = parseStatVal(val), parsedCmp = parseStatVal(cmpVal);
+    let arrow = '', valColor = '#e2e8f0';
+    if (parsed != null && parsedCmp != null) {
+      if      (parsed > parsedCmp) { arrow = `<span style="color:#34d399;font-size:9px;font-weight:800"> ▲</span>`; valColor = '#34d399'; }
+      else if (parsed < parsedCmp) { arrow = `<span style="color:#f87171;font-size:9px;font-weight:800"> ▼</span>`; valColor = '#f87171'; }
+      else                         { arrow = `<span style="color:#6b7280;font-size:9px"> =</span>`; }
+    }
+    if (!val) {
+      if (showS2) return `<div style="margin-top:3px"><span style="color:#94a3b8;font-size:9px">${label}</span> <span style="color:#4b5563;font-size:10px">—</span></div>`;
+      return '';
+    }
+    return `<div style="margin-top:3px"><span style="color:#94a3b8;font-size:9px">${label}</span> <span style="color:${valColor};font-size:10px;font-weight:700">${val}</span>${arrow}</div>`;
+  }
+  return statRow(labels.s1, st.s1, cmpSt?.s1) + statRow(labels.s2, st.s2, cmpSt?.s2);
+}
+
+function rdShow(slot, item, rarity, score, current, ch, bossNum, isFinal, isMobDrop) {
+  const lv    = ITEM_LEVELS[slot.id]?.[item.idx]      || '?';
+  const lvOld = ITEM_LEVELS[slot.id]?.[current.itemIdx] || '?';
+  const diff  = score - current.score;
+
+  document.getElementById('rdNew').className = `rd-item ${RARITY_BG[rarity]}`;
+  document.getElementById('rdNew').innerHTML = `
+    <div class="rd-item-label">MỚI DROP</div>
+    <div class="rd-item-name" style="color:${RARITY_COLOR[rarity]}">${item.name}</div>
+    <div class="rd-item-lv">Lv.${lv} · ${rarity}</div>
+    <div class="rd-item-score" style="color:${RARITY_COLOR[rarity]}">${fmt(score)}</div>
+    ${rdStatHtml(slot.id, item.idx, rarity, current.itemIdx, current.rarity)}`;
+
+  document.getElementById('rdOld').className = `rd-item ${RARITY_BG[current.rarity]}`;
+  document.getElementById('rdOld').innerHTML = `
+    <div class="rd-item-label">ĐANG EQUIP</div>
+    <div class="rd-item-name" style="color:${RARITY_COLOR[current.rarity]}">${current.name}</div>
+    <div class="rd-item-lv">Lv.${lvOld} · ${current.rarity}</div>
+    <div class="rd-item-score" style="color:${RARITY_COLOR[current.rarity]}">${fmt(current.score)}</div>
+    ${rdStatHtml(slot.id, current.itemIdx, current.rarity, item.idx, rarity)}`;
+
+  const scoreHigher = score > current.score;
+  const statHigherNote = anyStatHigher(slot.id, item.idx, rarity, current.itemIdx, current.rarity);
+  let reasonHtml = '';
+  if (scoreHigher && statHigherNote) {
+    reasonHtml = `Score cao hơn <strong style="color:#34d399">+${fmt(diff)}</strong> và một số stat cao hơn`;
+  } else if (scoreHigher) {
+    reasonHtml = `Score cao hơn <strong style="color:#34d399">+${fmt(diff)}</strong>`;
+  } else {
+    reasonHtml = `Score thấp hơn <strong style="color:#f87171">${fmt(diff)}</strong> nhưng <strong style="color:#34d399">một số stat cao hơn</strong>`;
+  }
+  document.getElementById('rdNote').innerHTML =
+    `${reasonHtml} — rarity thấp hơn (<span style="color:${RARITY_COLOR[current.rarity]}">${current.rarity}</span> → <span style="color:${RARITY_COLOR[rarity]}">${rarity}</span>).<br>Bạn muốn trang bị hay bán?`;
+
+  rdPending = { slot, item, rarity, score, current, ch, bossNum, isFinal, isMobDrop };
+  document.getElementById('rdOverlay').style.display = 'flex';
+}
+
+function rdDecide(equip) {
+  document.getElementById('rdOverlay').style.display = 'none';
+  if (!rdPending) return;
+  const { slot, item, rarity, score, current, ch, bossNum, isFinal, isMobDrop } = rdPending;
+  rdPending = null;
+  if (equip) {
+    state.gear[slot.id] = { name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, chapter: ch };
+    state.stats.upgrades++;
+  }
+  state.stats.total++;
+  state.stats.byRarity[rarity]++;
+  const entry = { ch, boss: bossNum, isFinal, isMobDrop, slot, name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, isUpgrade: equip, isNew: false, prevScore: current.score, prevName: current.name, prevRarity: current.rarity, prevItemIdx: current.itemIdx };
+  state.log.unshift(entry);
+  if (state.log.length > 200) state.log.pop();
+  if (isMobDrop) state.mobDropDone = true;
+  render();
+}
+
+// ═══════════════════════════════════════════════════════
+//  SIMULATION CORE
+// ═══════════════════════════════════════════════════════
+// Current wave number within chapter (1–totalW)
+function currentWaveNum() {
+  const bosses = totalBosses(state.chapter);
+  if (state.bossIdx >= bosses) return wavesInChapter(state.chapter) + 1;
+  const cycle = state.bossIdx;
+  if (!state.mobDropDone) return cycle * 5 + 1; // mob phase
+  return cycle * 5 + 5;                          // boss phase
+}
+
+function doNextWave() {
+  if (rdPending) return;
+  const bosses = totalBosses(state.chapter);
+  if (state.bossIdx >= bosses) return;
+  if (!state.mobDropDone) { doMobDrop(); }
+  else                    { doBoss(); }
+}
+
+function doMobDrop() {
+  if (rdPending) return;
+  if (state.mobDropDone) { alert('Mob wave đã drop rồi! Nhấn Boss Wave tiếp theo.'); return; }
+
+  const ch = state.chapter;
+  const slot = rollSlot();
+  let rarity = rollRarity(ch, false);
+  rarity = capRarityForMob(rarity); // Mob capped at Rare
+
+  const item  = pickItem(slot.id, ch);
+  const score = calcScore(item, rarity);
+  const current = state.gear[slot.id];
+  const isNew   = !current;
+
+  if (isNew) {
+    state.gear[slot.id] = { name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, chapter: ch };
+    state.stats.upgrades++;
+    state.stats.total++;
+    state.stats.byRarity[rarity]++;
+    state.log.unshift({ ch, boss: state.bossIdx+1, isFinal:false, isMobDrop:true, slot, name:item.name, itemId:item.id, itemIdx:item.idx, rarity, score, isUpgrade:true, isNew:true, prevScore:null, prevName:null, prevRarity:null, prevItemIdx:null });
+    state.mobDropDone = true;
+    if (state.log.length > 200) state.log.pop();
+    render();
+    return;
+  }
+
+  const isSameItemHigherRarity = item.idx === current.itemIdx && RARITIES.indexOf(rarity) > RARITIES.indexOf(current.rarity);
+  const isScoreHigher = score > current.score;
+  const isRarityDown  = RARITIES.indexOf(rarity) < RARITIES.indexOf(current.rarity);
+  const statUp = anyStatHigher(slot.id, item.idx, rarity, current.itemIdx, current.rarity);
+
+  if (isSameItemHigherRarity) {
+    // Auto equip: same item, higher rarity
+    state.gear[slot.id] = { name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, chapter: ch };
+    state.stats.upgrades++;
+    state.stats.total++;
+    state.stats.byRarity[rarity]++;
+    state.log.unshift({ ch, boss:state.bossIdx+1, isFinal:false, isMobDrop:true, slot, name:item.name, itemId:item.id, itemIdx:item.idx, rarity, score, isUpgrade:true, isNew:false, prevScore:current.score, prevName:current.name, prevRarity:current.rarity, prevItemIdx:current.itemIdx });
+    state.mobDropDone = true;
+    if (state.log.length > 200) state.log.pop();
+    render();
+    return;
+  }
+
+  if (isRarityDown && (isScoreHigher || statUp)) {
+    rdShow(slot, item, rarity, score, current, ch, state.bossIdx+1, false, true);
+    return;
+  }
+
+  const isUpgrade = isScoreHigher && !isRarityDown;
+  if (isUpgrade) {
+    state.gear[slot.id] = { name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, chapter: ch };
+    state.stats.upgrades++;
+  }
+  state.stats.total++;
+  state.stats.byRarity[rarity]++;
+  state.log.unshift({ ch, boss:state.bossIdx+1, isFinal:false, isMobDrop:true, slot, name:item.name, itemId:item.id, itemIdx:item.idx, rarity, score, isUpgrade, isNew:false, prevScore:current.score, prevName:current.name, prevRarity:current.rarity, prevItemIdx:current.itemIdx });
+  state.mobDropDone = true;
+  if (state.log.length > 200) state.log.pop();
+  render();
+}
+
+function doBoss() {
+  if (rdPending) return;
+  const ch = state.chapter;
+  if (state.bossIdx >= totalBosses(ch)) return;
+
+  const isFinal = isFinalBoss(ch, state.bossIdx);
+  const slot    = rollSlot();
+  let rarity    = rollRarity(ch, isFinal);
+  const item    = pickItem(slot.id, ch);
+  const score   = calcScore(item, rarity);
+  const current = state.gear[slot.id];
+  const isNew   = !current;
+
+  state.bossIdx++;
+  state.mobDropDone = false;
+
+  if (isNew) {
+    state.gear[slot.id] = { name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, chapter: ch };
+    state.stats.upgrades++;
+    state.stats.total++;
+    state.stats.byRarity[rarity]++;
+    state.log.unshift({ ch, boss:state.bossIdx, isFinal, isMobDrop:false, slot, name:item.name, itemId:item.id, itemIdx:item.idx, rarity, score, isUpgrade:true, isNew:true, prevScore:null, prevName:null, prevRarity:null, prevItemIdx:null });
+    if (state.log.length > 200) state.log.pop();
+    render();
+    return;
+  }
+
+  const isSameItemHigherRarity = item.idx === current.itemIdx && RARITIES.indexOf(rarity) > RARITIES.indexOf(current.rarity);
+  const isScoreHigher = score > current.score;
+  const isRarityDown  = RARITIES.indexOf(rarity) < RARITIES.indexOf(current.rarity);
+  const statUpBoss    = anyStatHigher(slot.id, item.idx, rarity, current.itemIdx, current.rarity);
+
+  if (isSameItemHigherRarity) {
+    state.gear[slot.id] = { name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, chapter: ch };
+    state.stats.upgrades++;
+    state.stats.total++;
+    state.stats.byRarity[rarity]++;
+    state.log.unshift({ ch, boss:state.bossIdx, isFinal, isMobDrop:false, slot, name:item.name, itemId:item.id, itemIdx:item.idx, rarity, score, isUpgrade:true, isNew:false, prevScore:current.score, prevName:current.name, prevRarity:current.rarity, prevItemIdx:current.itemIdx });
+    if (state.log.length > 200) state.log.pop();
+    render();
+    return;
+  }
+
+  if (isRarityDown && (isScoreHigher || statUpBoss) && !isFinal) {
+    render();
+    rdShow(slot, item, rarity, score, current, ch, state.bossIdx, isFinal, false);
+    return;
+  }
+
+  const isUpgrade = isScoreHigher && !isRarityDown;
+  if (isUpgrade) {
+    state.gear[slot.id] = { name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, chapter: ch };
+    state.stats.upgrades++;
+  }
+  state.stats.total++;
+  state.stats.byRarity[rarity]++;
+  state.log.unshift({ ch, boss:state.bossIdx, isFinal, isMobDrop:false, slot, name:item.name, itemId:item.id, itemIdx:item.idx, rarity, score, isUpgrade, isNew:false, prevScore:current.score, prevName:current.name, prevRarity:current.rarity, prevItemIdx:current.itemIdx });
+  if (state.log.length > 200) state.log.pop();
+  render();
+}
+
+function runAll() {
+  if (rdPending) return;
+  const ch     = state.chapter;
+  const bosses = totalBosses(ch);
+  while (state.bossIdx < bosses) {
+    // Mob drop (simplified, no popup in bulk)
+    if (!state.mobDropDone) {
+      const slot = rollSlot();
+      let rarity = capRarityForMob(rollRarity(ch, false));
+      const item = pickItem(slot.id, ch);
+      const score = calcScore(item, rarity);
+      const cur = state.gear[slot.id];
+      const isNew = !cur;
+      const upgrade = isNew || (score > cur.score && RARITIES.indexOf(rarity) >= RARITIES.indexOf(cur.rarity)) ||
+                      (item.idx === cur?.itemIdx && RARITIES.indexOf(rarity) > RARITIES.indexOf(cur?.rarity));
+      if (upgrade) state.gear[slot.id] = { name:item.name, itemId:item.id, itemIdx:item.idx, rarity, score, chapter:ch };
+      if (upgrade) state.stats.upgrades++;
+      state.stats.total++;
+      state.stats.byRarity[rarity]++;
+      state.log.unshift({ ch, boss:state.bossIdx+1, isFinal:false, isMobDrop:true, slot, name:item.name, itemId:item.id, itemIdx:item.idx, rarity, score, isUpgrade:upgrade, isNew, prevScore:cur?.score||null, prevName:cur?.name||null, prevRarity:cur?.rarity||null, prevItemIdx:cur?.itemIdx??null });
+      state.mobDropDone = true;
+    }
+    // Boss drop
+    const isFinal = isFinalBoss(ch, state.bossIdx);
+    const slot = rollSlot();
+    let rarity = rollRarity(ch, isFinal);
+    const item = pickItem(slot.id, ch);
+    const score = calcScore(item, rarity);
+    const cur = state.gear[slot.id];
+    const isNew = !cur;
+    state.bossIdx++;
+    state.mobDropDone = false;
+    const upgrade = isNew || score > cur?.score ||
+                    (item.idx === cur?.itemIdx && RARITIES.indexOf(rarity) > RARITIES.indexOf(cur?.rarity));
+    if (upgrade) state.gear[slot.id] = { name:item.name, itemId:item.id, itemIdx:item.idx, rarity, score, chapter:ch };
+    if (upgrade) state.stats.upgrades++;
+    state.stats.total++;
+    state.stats.byRarity[rarity]++;
+    state.log.unshift({ ch, boss:state.bossIdx, isFinal, isMobDrop:false, slot, name:item.name, itemId:item.id, itemIdx:item.idx, rarity, score, isUpgrade:upgrade, isNew, prevScore:cur?.score||null, prevName:cur?.name||null, prevRarity:cur?.rarity||null, prevItemIdx:cur?.itemIdx??null });
+  }
+  if (state.log.length > 200) state.log = state.log.slice(0,200);
+  render();
+}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════
+function render() {
+  // Chapter info
+  document.getElementById('chVal').textContent = state.chapter;
+  document.getElementById('chSlider').value = state.chapter;
+  const bosses = totalBosses(state.chapter);
+  document.getElementById('chInfo').innerHTML = `
+    <div class="ch-stat"><span>Chapter:</span><span>${state.chapter} / 24</span></div>
+    <div class="ch-stat"><span>Drop group:</span><span>${probGroup(state.chapter)}</span></div>`;
+
+  /* ── Wave grid (disabled) ─────────────────────────────────────────────────
+  const totalW_old = wavesInChapter(state.chapter);
+  const waveNum_old = currentWaveNum();
+  // ... full wave-cell grid code disabled, kept for reference ...
+  document.getElementById('waveGrid').innerHTML = '';
+  ── end disabled ── */
+
+  // Compact Mob / Boss progress bars
+  const totalW   = wavesInChapter(state.chapter);
+  const waveNum  = currentWaveNum();
+  const totalB   = totalBosses(state.chapter);
+  const mobDone  = state.bossIdx + (state.mobDropDone ? 1 : 0);
+  const bossDone = state.bossIdx;
+  function wpBar(done, total, colorFill) {
+    const segW = Math.max(5, Math.floor(152 / total) - 2);
+    let b = `<div style="display:flex;gap:2px;margin-top:3px">`;
+    for (let i = 0; i < total; i++) {
+      b += `<div style="flex:1;height:7px;border-radius:2px;background:${i < done ? colorFill : '#1e293b'}"></div>`;
+    }
+    b += `</div>`;
+    return b;
+  }
+  document.getElementById('waveProgress').innerHTML = `
+    <div style="margin-bottom:5px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:10px;font-weight:700;color:#60a5fa">⚔️ MOB</span>
+        <span style="font-size:10px;color:#60a5fa">${mobDone} / ${totalB}</span>
+      </div>
+      ${wpBar(mobDone, totalB, '#2563eb')}
+    </div>
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:10px;font-weight:700;color:#c084fc">👹 BOSS</span>
+        <span style="font-size:10px;color:#c084fc">${bossDone} / ${totalB}</span>
+      </div>
+      ${wpBar(bossDone, totalB, '#7c3aed')}
+    </div>`;
+  document.getElementById('waveProgressLabel').textContent =
+    waveNum > totalW ? '✓ Done' : `W${waveNum}/${totalW}`;
+
+  // Next wave button
+  const btnNW = document.getElementById('btnNextWave');
+  const chDone = state.bossIdx >= bosses;
+  if (chDone) {
+    btnNW.disabled = true;
+    btnNW.style.background = '#374151'; btnNW.style.color = '#6b7280';
+    btnNW.textContent = '✓ Chapter hoàn tất';
+  } else if (rdPending) {
+    btnNW.disabled = true;
+    btnNW.style.background = '#374151'; btnNW.style.color = '#6b7280';
+    btnNW.textContent = '⏳ Chờ quyết định…';
+  } else if (!state.mobDropDone) {
+    btnNW.disabled = false;
+    btnNW.style.background = '#2563eb'; btnNW.style.color = '#fff';
+    btnNW.textContent = `⚔️ MOB ${mobDone + 1}/${totalB}`;
+  } else {
+    btnNW.disabled = false;
+    btnNW.style.background = '#7c3aed'; btnNW.style.color = '#fff';
+    const isFin = isFinalBoss(state.chapter, state.bossIdx);
+    btnNW.textContent = `${isFin ? '★' : '👹'} BOSS ${bossDone + 1}/${totalB}${isFin ? ' (FINAL)' : ''}`;
+  }
+
+  // Gear grid
+  const gg = document.getElementById('gearGrid');
+  gg.innerHTML = '';
+  SLOTS.forEach(sl => {
+    const div = document.createElement('div');
+    const g = state.gear[sl.id];
+    div.className = 'gear-slot' + (g ? ' filled' : '');
+    if (g) {
+      div.className += ` ${RARITY_BG[g.rarity]}`;
+      const lv  = ITEM_LEVELS[sl.id]?.[g.itemIdx] || '?';
+      const RS  = {Common:'C',Uncommon:'U',Rare:'R',Epic:'E',Legendary:'L'};
+      const labels = SLOT_STAT_LABELS[sl.id] || {};
+      const st  = ITEM_STATS[sl.id]?.[g.itemIdx]?.[RS[g.rarity]];
+      const showS2 = ['Rare','Epic','Legendary'].includes(g.rarity);
+      let statsHtml = '';
+      if (st) {
+        const s1 = st.s1 ? `<span style="color:#6b7280;font-size:9px">${labels.s1||'S1'}</span> <span style="color:#d1d5db;font-size:10px;font-weight:600">${st.s1}</span>` : '';
+        let s2 = '';
+        if (st.s2) {
+          s2 = ` <span style="color:#6b7280;font-size:9px">${labels.s2||'S2'}</span> <span style="color:#d1d5db;font-size:10px;font-weight:600">${st.s2}</span>`;
+        } else if (showS2 && labels.s2) {
+          s2 = ` <span style="color:#6b7280;font-size:9px">${labels.s2}</span> <span style="color:#374151;font-size:10px">—</span>`;
+        }
+        if (s1 || s2) statsHtml = `<div style="margin-top:3px;line-height:1.5">${s1}${s2}</div>`;
+      }
+      div.innerHTML = `
+        <div class="gear-slot-name">${sl.icon} ${sl.vi}</div>
+        ${rarityBadge(g.rarity)}
+        <div class="gear-item-name" style="color:${RARITY_COLOR[g.rarity]}">${g.name} <span style="font-size:9px;color:#a78bfa;font-weight:600">Lv.${lv}</span></div>
+        <div class="gear-score">${fmt(g.score)} pts · Ch${g.chapter}</div>
+        ${statsHtml}`;
+    } else {
+      div.innerHTML = `<div class="gear-slot-name">${sl.icon} ${sl.vi}</div><div style="color:#374151;font-size:11px;margin-top:8px">— Trống —</div>`;
+    }
+    gg.appendChild(div);
+  });
+
+  // Drop log
+  const logEl = document.getElementById('logContent');
+  if (!state.log.length) {
+    logEl.innerHTML = '<div style="color:#6b7280;font-size:11px;text-align:center;padding:20px">Chưa có drop nào</div>';
+  } else {
+    let html = '';
+    state.log.forEach(e => {
+      const badge = e.isNew
+        ? `<span class="drop-badge badge-new">★ Mới</span>`
+        : e.isUpgrade
+          ? `<span class="drop-badge badge-upgrade">↑ Upgrade</span>`
+          : `<span class="drop-badge badge-sell">↓ Bán</span>`;
+      const srcBadge = e.isMobDrop
+        ? `<span class="drop-badge badge-mob">⚔️ MOB</span>`
+        : e.isFinal
+          ? `<span class="drop-badge badge-final">★ BOSS</span>`
+          : `<span class="drop-badge badge-boss">👹 BOSS</span>`;
+      const lv = ITEM_LEVELS[e.slot.id]?.[e.itemIdx] || '?';
+      const prevTxt = (e.prevScore != null && !e.isNew)
+        ? `<div style="font-size:9px;color:#6b7280;margin-top:2px">⬅ ${e.prevName||''} · <span style="color:${RARITY_COLOR[e.prevRarity||'Common']}">${e.prevRarity||''}</span> · ${fmt(e.prevScore)} pts</div>`
+        : '';
+      // Stats for drop log
+      const RS2 = {Common:'C',Uncommon:'U',Rare:'R',Epic:'E',Legendary:'L'};
+      const logLabels = SLOT_STAT_LABELS[e.slot.id] || {};
+      const logSt = ITEM_STATS[e.slot.id]?.[e.itemIdx]?.[RS2[e.rarity]];
+      const logShowS2 = ['Rare','Epic','Legendary'].includes(e.rarity);
+      let logStatsHtml = '';
+      if (logSt) {
+        const ls1 = logSt.s1 ? `<span style="color:#6b7280;font-size:8px">${logLabels.s1||'S1'}</span> <span style="color:#cbd5e1;font-size:9px;font-weight:600">${logSt.s1}</span>` : '';
+        let ls2 = '';
+        if (logSt.s2) {
+          ls2 = ` <span style="color:#6b7280;font-size:8px">${logLabels.s2||'S2'}</span> <span style="color:#cbd5e1;font-size:9px;font-weight:600">${logSt.s2}</span>`;
+        } else if (logShowS2 && logLabels.s2) {
+          ls2 = ` <span style="color:#6b7280;font-size:8px">${logLabels.s2}</span> <span style="color:#374151;font-size:9px">—</span>`;
+        }
+        if (ls1 || ls2) logStatsHtml = `<div style="margin-top:2px">${ls1}${ls2}</div>`;
+      }
+      html += `<div class="drop-card ${RARITY_BG[e.rarity]}">
+        <div class="drop-card-header">
+          <span class="drop-card-name" style="color:${RARITY_COLOR[e.rarity]}">${e.name} <span style="font-size:9px;color:#a78bfa">Lv.${lv}</span></span>
+          <span style="display:flex;gap:3px">${srcBadge} ${badge}</span>
+        </div>
+        <div class="drop-card-sub">${e.slot.icon} ${e.slot.vi} · #${String(e.itemIdx+1).padStart(2,'0')}/66 · Ch${e.ch} · Boss ${e.boss} · ${fmt(e.score)} pts</div>
+        ${logStatsHtml}
+        ${prevTxt}
+      </div>`;
+    });
+    logEl.innerHTML = html;
+  }
+
+  // Stats tab
+  renderStats();
+
+  // Right panel
+  renderRight();
+}
+
+function renderRight() {
+  const s = state.stats;
+  const total = s.total;
+  const upgRate = total ? (s.upgrades/total*100).toFixed(1) : '0.0';
+  let html = `
+    <div class="ch-info">
+      <div class="ch-stat"><span>Tổng drops:</span><span>${total}</span></div>
+      <div class="ch-stat"><span>Upgrades:</span><span>${s.upgrades} (${upgRate}%)</span></div>
+    </div>
+    <div class="section-label">Rarity phân bổ</div>`;
+  const segs = RARITIES.map(r => {
+    const n = s.byRarity[r], pct = total ? n/total*100 : 0;
+    return `<div class="rarity-seg" style="width:${pct}%;background:${RARITY_COLOR[r]}" title="${r}: ${n}"></div>`;
+  }).join('');
+  html += `<div class="rarity-bar">${segs}</div>`;
+  RARITIES.forEach(r => {
+    const n = s.byRarity[r];
+    const pct = total ? (n/total*100).toFixed(1) : '0.0';
+    html += `<div class="stat-row"><span style="color:${RARITY_COLOR[r]}">${r}</span><span class="stat-val">${n} <span style="color:#6b7280">(${pct}%)</span></span></div>`;
+  });
+  document.getElementById('rightInfo').innerHTML = html;
+}
+
+function renderStats() {
+  const s = state.stats;
+  const total = s.total;
+  const upgRate = total ? (s.upgrades/total*100).toFixed(1) : '0.0';
+  let html = `
+    <div class="ch-info">
+      <div class="ch-stat"><span>Tổng drops:</span><span>${total}</span></div>
+      <div class="ch-stat"><span>Upgrades:</span><span>${s.upgrades}</span></div>
+      <div class="ch-stat"><span>Upgrade rate:</span><span>${upgRate}%</span></div>
+    </div>
+    <div class="section-label">Rarity phân bổ</div>`;
+  const segs = RARITIES.map(r => {
+    const n = s.byRarity[r], pct = total ? n/total*100 : 0;
+    return `<div class="rarity-seg" style="width:${pct}%;background:${RARITY_COLOR[r]}" title="${r}: ${n}"></div>`;
+  }).join('');
+  html += `<div class="rarity-bar">${segs}</div>`;
+  RARITIES.forEach(r => {
+    const n = s.byRarity[r];
+    const pct = total ? (n/total*100).toFixed(1) : '0.0';
+    html += `<div class="stat-row"><span style="color:${RARITY_COLOR[r]}">${r}</span><span class="stat-val">${n} <span style="color:#6b7280">(${pct}%)</span></span></div>`;
+  });
+  document.getElementById('statsContent').innerHTML = html;
+}
+
+function renderRarityList() {
+  const slotF = document.getElementById('raritySlotFilter').value;
+  const rarF  = document.getElementById('rarityFilter').value;
+  const slotsToShow = slotF === 'all' ? SLOTS : SLOTS.filter(sl => sl.id === slotF);
+  let html = '';
+  slotsToShow.forEach(sl => {
+    html += `<div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin:8px 0 4px">${sl.icon} ${sl.vi}</div>`;
+    let lastCh = 0;
+    ITEM_POOLS[sl.id].forEach(item => {
+      if (item.chapter !== lastCh) {
+        html += `<div style="font-size:10px;color:#4b5563;margin:4px 0 2px;padding-left:2px">Chapter ${item.chapter}</div>`;
+        lastCh = item.chapter;
+      }
+      const raritiesToShow = rarF === 'all' ? RARITIES : [rarF];
+      const rows = raritiesToShow.map(r => {
+        const sc = calcScore(item, r);
+        return `<span style="color:${RARITY_COLOR[r]};font-size:10px;margin-right:6px">${r[0]}: ${fmt(sc)}</span>`;
+      }).join('');
+      html += `<div style="padding:2px 6px;border-radius:4px;background:#1e1e36;margin-bottom:1px;font-size:11px;display:flex;justify-content:space-between"><span><span style="color:#4b5563;font-size:10px">#${String(item.idx+1).padStart(2,'0')}</span> ${item.name}</span><span>${rows}</span></div>`;
+    });
+  });
+  document.getElementById('rarityListContent').innerHTML = html || '<div style="color:#6b7280;font-size:11px">Không có dữ liệu</div>';
+}
+
+function renderItemStats() {
+  const RARITY_SHORT2 = {Common:'C',Uncommon:'U',Rare:'R',Epic:'E',Legendary:'L'};
+  const slotF = document.getElementById('isSlotFilter').value;
+  const rarF  = document.getElementById('isRarityFilter').value;
+  const raritiesShow = rarF === 'all' ? RARITIES : [rarF];
+  const slotsShow    = slotF === 'all' ? SLOTS : SLOTS.filter(s => s.id === slotF);
+  let html = '';
+  slotsShow.forEach(sl => {
+    const labels = SLOT_STAT_LABELS[sl.id] || {};
+    html += `<div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin:10px 0 4px">${sl.icon} ${sl.vi}</div>`;
+    html += `<div style="display:grid;grid-template-columns:24px 1fr repeat(${raritiesShow.length*2},1fr);gap:2px;font-size:9px;color:#6b7280;font-weight:700;padding:2px 4px;background:#1a1a2e;border-radius:4px;margin-bottom:2px"><span>#</span><span>Item</span>`;
+    raritiesShow.forEach(r => {
+      html += `<span style="color:${RARITY_COLOR[r]};text-align:center">${r.slice(0,1)} ${labels.s1||'S1'}</span>`;
+      html += `<span style="color:${RARITY_COLOR[r]};text-align:center">${r.slice(0,1)} ${labels.s2||'S2'}</span>`;
+    });
+    html += `</div>`;
+    let lastCh = 0;
+    ITEM_POOLS[sl.id].forEach(item => {
+      if (item.chapter !== lastCh) {
+        html += `<div style="font-size:9px;color:#4b5563;padding:3px 4px 1px">Ch ${item.chapter}</div>`;
+        lastCh = item.chapter;
+      }
+      html += `<div style="display:grid;grid-template-columns:24px 1fr repeat(${raritiesShow.length*2},1fr);gap:2px;font-size:9px;padding:2px 4px;border-bottom:1px solid #1f2937;align-items:center"><span style="color:#4b5563">${item.idx+1}</span><span style="color:#d1d5db;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${item.name}">${item.name}</span>`;
+      raritiesShow.forEach(r => {
+        const st = ITEM_STATS[sl.id]?.[item.idx]?.[RARITY_SHORT2[r]];
+        html += `<span style="color:${RARITY_COLOR[r]};text-align:center">${st?.s1||'—'}</span>`;
+        html += `<span style="color:${st?.s2?RARITY_COLOR[r]:'#4b5563'};text-align:center">${st?.s2||'—'}</span>`;
+      });
+      html += `</div>`;
+    });
+  });
+  document.getElementById('itemStatsContent').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════
+//  NAVIGATION & CONTROLS
+// ═══════════════════════════════════════════════════════
+function setTab(name, el) {
+  ['log','stats','rarity','prob','itemstats'].forEach(t => {
+    const panel = document.getElementById('tab-'+t);
+    if (panel) panel.style.display = t === name ? '' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  if (name === 'prob') buildProbEditor();
+  if (name === 'rarity') renderRarityList();
+  if (name === 'itemstats') renderItemStats();
+}
+
+function chChange(d) {
+  state.chapter = Math.max(1, Math.min(24, state.chapter + d));
+  state.bossIdx = 0;
+  state.mobDropDone = false;
+  render();
+}
+
+function chSet(v) {
+  state.chapter = parseInt(v);
+  state.bossIdx = 0;
+  state.mobDropDone = false;
+  render();
+}
+
+function resetChapter() {
+  state.bossIdx = 0;
+  state.mobDropDone = false;
+  render();
+}
+
+function resetAll() {
+  state = {
+    chapter: 1, bossIdx: 0, gear: {}, mobDropDone: false,
+    log: [],
+    stats: { total:0, upgrades:0, byRarity:{Common:0,Uncommon:0,Rare:0,Epic:0,Legendary:0} },
+    customProb: null,
+  };
+  DROP_RATES = DEFAULT_PROB.map(r => [...r]);
+  render();
+}
+
+function clearLog() {
+  state.log = [];
+  render();
+}
+
+// Prob editor
+function buildProbEditor() {
+  const groups = ['Ch 1–3','Ch 4–6','Ch 7–9','Ch 10–12','Ch 13–15','Ch 16–18','Ch 19–21','Ch 22–24'];
+  const rates  = state.customProb || DROP_RATES;
+  let html = `<table class="prob-table"><thead><tr><th>Nhóm</th>`;
+  RARITIES.forEach(r => html += `<th style="color:${RARITY_COLOR[r]}">${r.slice(0,3)}</th>`);
+  html += `<th>Sum</th></tr></thead><tbody>`;
+  rates.forEach((row, i) => {
+    const sum = row.reduce((a,b)=>a+b,0);
+    html += `<tr><td style="color:#6b7280;font-size:9px">${groups[i]}</td>`;
+    row.forEach((v, j) => {
+      html += `<td><input type="number" min="0" max="100" step="0.1" value="${v}" data-i="${i}" data-j="${j}" onchange="onProbChange()"></td>`;
+    });
+    html += `<td style="color:${Math.abs(sum-100)<0.1?'#34d399':'#f87171'};font-size:10px">${sum.toFixed(1)}</td></tr>`;
+  });
+  html += `</tbody></table>`;
+  document.getElementById('probEditor').innerHTML = html;
+}
+
+function onProbChange() {
+  // Preview update only
+  const inputs = document.querySelectorAll('#probEditor input');
+  const newRates = Array.from({length:8}, () => [0,0,0,0,0]);
+  inputs.forEach(inp => {
+    const i = parseInt(inp.dataset.i), j = parseInt(inp.dataset.j);
+    newRates[i][j] = parseFloat(inp.value)||0;
+  });
+  // Update sum displays
+  buildProbEditor(); // Rebuild to show sums
+  // Re-fill the values
+  document.querySelectorAll('#probEditor input').forEach(inp => {
+    const i = parseInt(inp.dataset.i), j = parseInt(inp.dataset.j);
+    inp.value = newRates[i][j];
+  });
+}
+
+function saveProb() {
+  const inputs = document.querySelectorAll('#probEditor input');
+  const newRates = Array.from({length:8}, () => [0,0,0,0,0]);
+  inputs.forEach(inp => {
+    const i = parseInt(inp.dataset.i), j = parseInt(inp.dataset.j);
+    newRates[i][j] = parseFloat(inp.value)||0;
+  });
+  for (let i = 0; i < 8; i++) {
+    const sum = newRates[i].reduce((a,b)=>a+b,0);
+    if (Math.abs(sum-100) > 0.5) {
+      document.getElementById('probErr').textContent = `Hàng ${i+1} (${['Ch 1–3','Ch 4–6','Ch 7–9','Ch 10–12','Ch 13–15','Ch 16–18','Ch 19–21','Ch 22–24'][i]}) tổng = ${sum.toFixed(1)}, cần = 100`;
+      return;
+    }
+  }
+  document.getElementById('probErr').textContent = '';
+  DROP_RATES = newRates;
+  state.customProb = newRates;
+  try { localStorage.setItem('natv_customProb', JSON.stringify(newRates)); } catch(e){}
+  buildProbEditor();
+}
+
+function resetProb() {
+  DROP_RATES = DEFAULT_PROB.map(r => [...r]);
+  state.customProb = null;
+  try { localStorage.removeItem('natv_customProb'); } catch(e){}
+  buildProbEditor();
+  document.getElementById('probErr').textContent = '';
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+// Populate slot filters
+SLOTS.forEach(sl => {
+  ['raritySlotFilter','isSlotFilter'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const opt = document.createElement('option');
+    opt.value = sl.id; opt.textContent = `${sl.icon} ${sl.vi}`;
+    sel.appendChild(opt);
+  });
+});
+
+// Restore customProb from localStorage
+try {
+  const saved = localStorage.getItem('natv_customProb');
+  if (saved) { const p = JSON.parse(saved); DROP_RATES = p; state.customProb = p; }
+} catch(e) {}
+
+render();
+</script>
+</body>
+</html>
