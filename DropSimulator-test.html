@@ -154,6 +154,11 @@ input[type=range] { width: 100%; accent-color: #7c3aed; }
   <!-- wave-grid (disabled – replaced by compact progress bars) -->
   <!-- <div class="wave-grid" id="waveGrid"></div> -->
   <div id="waveProgress" style="margin-bottom:10px"></div>
+  <div id="pityBar" style="margin-bottom:8px;padding:5px 8px;border-radius:6px;background:#0f0f1e;border:1px solid #2a2a44;display:flex;align-items:center;justify-content:space-between">
+    <span style="font-size:10px;color:#9ca3af;font-weight:700">🎯 PITY</span>
+    <div style="display:flex;gap:3px;align-items:center" id="pityDots"></div>
+    <span id="pityCountLabel" style="font-size:10px;color:#6b7280;font-weight:700">0/5</span>
+  </div>
 
   <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
     <button class="btn btn-blue" id="btnNextWave" onclick="doNextWave()" style="font-size:13px;padding:9px 14px">⚔️ MOB 1/6</button>
@@ -2133,6 +2138,7 @@ let state = {
   log: [],
   stats: { total:0, upgrades:0, byRarity:{Common:0,Uncommon:0,Rare:0,Epic:0,Legendary:0} },
   customProb: null,
+  pityCount: 0,  // consecutive non-upgrade drops
 };
 
 // Wave counts: Ch1=30, Ch2=45, Ch3=60, Ch4=75, Ch5-24=90 (each cycle=5 waves: 3 mob+skip+boss)
@@ -2229,7 +2235,7 @@ function rdStatHtml(slotId, itemIdx, rarity, cmpIdx, cmpRarity) {
   return statRow(labels.s1, st.s1, cmpSt?.s1) + statRow(labels.s2, st.s2, cmpSt?.s2);
 }
 
-function rdShow(slot, item, rarity, score, current, ch, bossNum, isFinal, isMobDrop) {
+function rdShow(slot, item, rarity, score, current, ch, bossNum, isFinal, isMobDrop, isPity=false) {
   const lv    = ITEM_LEVELS[slot.id]?.[item.idx]      || '?';
   const lvOld = ITEM_LEVELS[slot.id]?.[current.itemIdx] || '?';
   const diff  = score - current.score;
@@ -2265,22 +2271,24 @@ function rdShow(slot, item, rarity, score, current, ch, bossNum, isFinal, isMobD
   document.getElementById('rdNote').innerHTML =
     `${reasonHtml} — rarity thấp hơn (<span style="color:${RARITY_COLOR[current.rarity]}">${current.rarity}</span> → <span style="color:${RARITY_COLOR[rarity]}">${rarity}</span>).<br>Bạn muốn trang bị hay bán?`;
 
-  rdPending = { slot, item, rarity, score, current, ch, bossNum, isFinal, isMobDrop };
+  rdPending = { slot, item, rarity, score, current, ch, bossNum, isFinal, isMobDrop, isPity };
   document.getElementById('rdOverlay').style.display = 'flex';
 }
 
 function rdDecide(equip) {
   document.getElementById('rdOverlay').style.display = 'none';
   if (!rdPending) return;
-  const { slot, item, rarity, score, current, ch, bossNum, isFinal, isMobDrop } = rdPending;
+  const { slot, item, rarity, score, current, ch, bossNum, isFinal, isMobDrop, isPity } = rdPending;
   rdPending = null;
   if (equip) {
     state.gear[slot.id] = { name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, chapter: ch };
     state.stats.upgrades++;
   }
+  // Hướng B: dù equip hay bán đều reset pity (user đã có lựa chọn)
+  tickPity(true, true);
   state.stats.total++;
   state.stats.byRarity[rarity]++;
-  const entry = { ch, boss: bossNum, isFinal, isMobDrop, slot, name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, isUpgrade: equip, isNew: false, prevScore: current.score, prevName: current.name, prevRarity: current.rarity, prevItemIdx: current.itemIdx };
+  const entry = { ch, boss: bossNum, isFinal, isMobDrop, slot, name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, isUpgrade: equip, isNew: false, isPity: isPity||false, prevScore: current.score, prevName: current.name, prevRarity: current.rarity, prevItemIdx: current.itemIdx };
   state.log.unshift(entry);
   if (state.log.length > 200) state.log.pop();
   if (isMobDrop) state.mobDropDone = true;
@@ -2307,17 +2315,104 @@ function doNextWave() {
   else                    { doBoss(); }
 }
 
+
+// ═══════════════════════════════════════════════════════
+//  PITY SYSTEM
+// ═══════════════════════════════════════════════════════
+const RS_MAP = {Common:'C',Uncommon:'U',Rare:'R',Epic:'E',Legendary:'L'};
+
+function chapterMaxScore(slotId, ch) {
+  const pool = CH_ITEMS[slotId][ch] || ITEM_POOLS[slotId];
+  if (!pool.length) return 0;
+  const maxItem = pool[pool.length - 1];
+  const sc = ITEM_SCORES?.[slotId]?.[maxItem.idx]?.L;
+  return sc != null ? parseFloat(sc) : calcScore(maxItem, 'Legendary');
+}
+
+function getScoreForRarity(slotId, itemIdx, rarity) {
+  const sc = ITEM_SCORES?.[slotId]?.[itemIdx]?.[RS_MAP[rarity]];
+  return sc != null ? parseFloat(sc) : null;
+}
+
+function pityTargetSlot(ch) {
+  // Slot có ratio curScore/maxScore thấp nhất
+  let worst = null, worstRatio = Infinity;
+  SLOTS.forEach(sl => {
+    const maxSc = chapterMaxScore(sl.id, ch);
+    if (!maxSc) return;
+    const cur = state.gear[sl.id];
+    const curSc = cur ? cur.score : 0;
+    const ratio = curSc / maxSc;
+    if (ratio < worstRatio) { worstRatio = ratio; worst = sl; }
+  });
+  return worst || SLOTS[0];
+}
+
+function pityPickItem(slotId, ch) {
+  const cur = state.gear[slotId];
+  const curScore = cur ? cur.score : 0;
+  const curRarityIdx = cur ? RARITIES.indexOf(cur.rarity) : -1;
+  const pool = CH_ITEMS[slotId][ch] || ITEM_POOLS[slotId];
+  const maxSc = chapterMaxScore(slotId, ch);
+  const atMax = (maxSc > 0 && curScore >= maxSc * 0.99);
+
+  if (!atMax) {
+    // Ưu tiên score > curScore, rarity thấp nhất có thể
+    for (const rarity of RARITIES) {
+      const candidates = pool.filter(item => {
+        const sc = getScoreForRarity(slotId, item.idx, rarity);
+        return sc !== null && sc > curScore;
+      });
+      if (candidates.length > 0) {
+        return { item: candidates[Math.floor(Math.random() * candidates.length)], rarity };
+      }
+    }
+  }
+
+  // Đã max hoặc không tìm được: force rarity cao hơn + score cao hơn
+  for (let ri = Math.max(0, curRarityIdx + 1); ri < RARITIES.length; ri++) {
+    const rarity = RARITIES[ri];
+    const candidates = pool.filter(item => {
+      const sc = getScoreForRarity(slotId, item.idx, rarity);
+      return sc !== null && sc > curScore;
+    });
+    if (candidates.length > 0) {
+      return { item: candidates[Math.floor(Math.random() * candidates.length)], rarity };
+    }
+  }
+
+  // Ultimate fallback
+  return { item: pool[pool.length - 1], rarity: 'Legendary' };
+}
+
+function tickPity(wasUpgraded, wasHuongB) {
+  // upgrade hoặc user tự quyết (Hướng B) = reset
+  if (wasUpgraded || wasHuongB) { state.pityCount = 0; }
+  else { state.pityCount = Math.min(state.pityCount + 1, 5); }
+}
+
 function doMobDrop() {
   if (rdPending) return;
   if (state.mobDropDone) { alert('Mob wave đã drop rồi! Nhấn Boss Wave tiếp theo.'); return; }
 
   const ch = state.chapter;
-  const slot = rollSlot();
-  let rarity = rollRarity(ch, false);
-  rarity = capRarityForMob(rarity); // Mob capped at Rare
+  let slot, rarity, item, score;
+  let isPity = false;
 
-  const item  = pickItem(slot.id, ch);
-  const score = calcScore(item, rarity);
+  if (state.pityCount >= 5) {
+    // PITY DROP
+    isPity = true;
+    slot   = pityTargetSlot(ch);
+    const pi = pityPickItem(slot.id, ch);
+    item   = pi.item;
+    rarity = capRarityForMob(pi.rarity); // mob still capped at Rare
+    score  = calcScore(item, rarity);
+  } else {
+    slot   = rollSlot();
+    rarity = capRarityForMob(rollRarity(ch, false));
+    item   = pickItem(slot.id, ch);
+    score  = calcScore(item, rarity);
+  }
   const current = state.gear[slot.id];
   const isNew   = !current;
 
@@ -2326,7 +2421,8 @@ function doMobDrop() {
     state.stats.upgrades++;
     state.stats.total++;
     state.stats.byRarity[rarity]++;
-    state.log.unshift({ ch, boss: state.bossIdx+1, isFinal:false, isMobDrop:true, slot, name:item.name, itemId:item.id, itemIdx:item.idx, rarity, score, isUpgrade:true, isNew:true, prevScore:null, prevName:null, prevRarity:null, prevItemIdx:null });
+    state.log.unshift({ ch, boss: state.bossIdx+1, isFinal:false, isMobDrop:true, slot, name:item.name, itemId:item.id, itemIdx:item.idx, rarity, score, isUpgrade:true, isNew:true, isPity, prevScore:null, prevName:null, prevRarity:null, prevItemIdx:null });
+    tickPity(true, false);
     state.mobDropDone = true;
     if (state.log.length > 200) state.log.pop();
     render();
@@ -2344,7 +2440,8 @@ function doMobDrop() {
     state.stats.upgrades++;
     state.stats.total++;
     state.stats.byRarity[rarity]++;
-    state.log.unshift({ ch, boss:state.bossIdx+1, isFinal:false, isMobDrop:true, slot, name:item.name, itemId:item.id, itemIdx:item.idx, rarity, score, isUpgrade:true, isNew:false, prevScore:current.score, prevName:current.name, prevRarity:current.rarity, prevItemIdx:current.itemIdx });
+    state.log.unshift({ ch, boss:state.bossIdx+1, isFinal:false, isMobDrop:true, slot, name:item.name, itemId:item.id, itemIdx:item.idx, rarity, score, isUpgrade:true, isNew:false, isPity, prevScore:current.score, prevName:current.name, prevRarity:current.rarity, prevItemIdx:current.itemIdx });
+    tickPity(true, false);
     state.mobDropDone = true;
     if (state.log.length > 200) state.log.pop();
     render();
@@ -2352,7 +2449,7 @@ function doMobDrop() {
   }
 
   if (isRarityDown && (isScoreHigher || statUp)) {
-    rdShow(slot, item, rarity, score, current, ch, state.bossIdx+1, false, true);
+    rdShow(slot, item, rarity, score, current, ch, state.bossIdx+1, false, true, isPity);
     return;
   }
 
@@ -2361,9 +2458,10 @@ function doMobDrop() {
     state.gear[slot.id] = { name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, chapter: ch };
     state.stats.upgrades++;
   }
+  tickPity(isUpgrade, false);
   state.stats.total++;
   state.stats.byRarity[rarity]++;
-  state.log.unshift({ ch, boss:state.bossIdx+1, isFinal:false, isMobDrop:true, slot, name:item.name, itemId:item.id, itemIdx:item.idx, rarity, score, isUpgrade, isNew:false, prevScore:current.score, prevName:current.name, prevRarity:current.rarity, prevItemIdx:current.itemIdx });
+  state.log.unshift({ ch, boss:state.bossIdx+1, isFinal:false, isMobDrop:true, slot, name:item.name, itemId:item.id, itemIdx:item.idx, rarity, score, isUpgrade, isNew:false, isPity, prevScore:current.score, prevName:current.name, prevRarity:current.rarity, prevItemIdx:current.itemIdx });
   state.mobDropDone = true;
   if (state.log.length > 200) state.log.pop();
   render();
@@ -2375,10 +2473,23 @@ function doBoss() {
   if (state.bossIdx >= totalBosses(ch)) return;
 
   const isFinal = isFinalBoss(ch, state.bossIdx);
-  const slot    = rollSlot();
-  let rarity    = rollRarity(ch, isFinal);
-  const item    = pickItem(slot.id, ch);
-  const score   = calcScore(item, rarity);
+  let slot, rarity, item, score;
+  let isPity = false;
+
+  if (state.pityCount >= 5) {
+    isPity = true;
+    slot   = pityTargetSlot(ch);
+    const pi = pityPickItem(slot.id, ch);
+    item   = pi.item;
+    rarity = pi.rarity;
+    score  = calcScore(item, rarity);
+  } else {
+    slot   = rollSlot();
+    rarity = rollRarity(ch, isFinal);
+    item   = pickItem(slot.id, ch);
+    score  = calcScore(item, rarity);
+  }
+
   const current = state.gear[slot.id];
   const isNew   = !current;
 
@@ -2390,7 +2501,8 @@ function doBoss() {
     state.stats.upgrades++;
     state.stats.total++;
     state.stats.byRarity[rarity]++;
-    state.log.unshift({ ch, boss:state.bossIdx, isFinal, isMobDrop:false, slot, name:item.name, itemId:item.id, itemIdx:item.idx, rarity, score, isUpgrade:true, isNew:true, prevScore:null, prevName:null, prevRarity:null, prevItemIdx:null });
+    state.log.unshift({ ch, boss:state.bossIdx, isFinal, isMobDrop:false, slot, name:item.name, itemId:item.id, itemIdx:item.idx, rarity, score, isUpgrade:true, isNew:true, isPity, prevScore:null, prevName:null, prevRarity:null, prevItemIdx:null });
+    tickPity(true, false);
     if (state.log.length > 200) state.log.pop();
     render();
     return;
@@ -2406,7 +2518,8 @@ function doBoss() {
     state.stats.upgrades++;
     state.stats.total++;
     state.stats.byRarity[rarity]++;
-    state.log.unshift({ ch, boss:state.bossIdx, isFinal, isMobDrop:false, slot, name:item.name, itemId:item.id, itemIdx:item.idx, rarity, score, isUpgrade:true, isNew:false, prevScore:current.score, prevName:current.name, prevRarity:current.rarity, prevItemIdx:current.itemIdx });
+    state.log.unshift({ ch, boss:state.bossIdx, isFinal, isMobDrop:false, slot, name:item.name, itemId:item.id, itemIdx:item.idx, rarity, score, isUpgrade:true, isNew:false, isPity, prevScore:current.score, prevName:current.name, prevRarity:current.rarity, prevItemIdx:current.itemIdx });
+    tickPity(true, false);
     if (state.log.length > 200) state.log.pop();
     render();
     return;
@@ -2414,7 +2527,7 @@ function doBoss() {
 
   if (isRarityDown && (isScoreHigher || statUpBoss) && !isFinal) {
     render();
-    rdShow(slot, item, rarity, score, current, ch, state.bossIdx, isFinal, false);
+    rdShow(slot, item, rarity, score, current, ch, state.bossIdx, isFinal, false, isPity);
     return;
   }
 
@@ -2423,9 +2536,10 @@ function doBoss() {
     state.gear[slot.id] = { name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, chapter: ch };
     state.stats.upgrades++;
   }
+  tickPity(isUpgrade, false);
   state.stats.total++;
   state.stats.byRarity[rarity]++;
-  state.log.unshift({ ch, boss:state.bossIdx, isFinal, isMobDrop:false, slot, name:item.name, itemId:item.id, itemIdx:item.idx, rarity, score, isUpgrade, isNew:false, prevScore:current.score, prevName:current.name, prevRarity:current.rarity, prevItemIdx:current.itemIdx });
+  state.log.unshift({ ch, boss:state.bossIdx, isFinal, isMobDrop:false, slot, name:item.name, itemId:item.id, itemIdx:item.idx, rarity, score, isUpgrade, isNew:false, isPity, prevScore:current.score, prevName:current.name, prevRarity:current.rarity, prevItemIdx:current.itemIdx });
   if (state.log.length > 200) state.log.pop();
   render();
 }
@@ -2485,6 +2599,19 @@ function render() {
   document.getElementById('chInfo').innerHTML = `
     <div class="ch-stat"><span>Chapter:</span><span>${state.chapter} / 24</span></div>
     <div class="ch-stat"><span>Drop group:</span><span>${probGroup(state.chapter)}</span></div>`;
+
+  // Pity bar
+  const pc = state.pityCount;
+  let dotsHtml = '';
+  for (let i = 0; i < 5; i++) {
+    const filled = i < pc;
+    const color  = filled ? (pc >= 4 ? '#f87171' : pc >= 3 ? '#fb923c' : '#facc15') : '#1e293b';
+    dotsHtml += `<div style="width:14px;height:14px;border-radius:3px;background:${color};border:1px solid ${filled?'transparent':'#374151'}"></div>`;
+  }
+  document.getElementById('pityDots').innerHTML = dotsHtml;
+  const pLabel = document.getElementById('pityCountLabel');
+  pLabel.textContent = pc >= 5 ? '🎯 READY!' : `${pc}/5`;
+  pLabel.style.color = pc >= 5 ? '#f87171' : pc >= 3 ? '#fb923c' : '#6b7280';
 
   /* ── Wave grid (disabled) ─────────────────────────────────────────────────
   const totalW_old = wavesInChapter(state.chapter);
@@ -2624,7 +2751,7 @@ function render() {
       }
       html += `<div class="drop-card ${RARITY_BG[e.rarity]}">
         <div class="drop-card-header">
-          <span class="drop-card-name" style="color:${RARITY_COLOR[e.rarity]}">${e.name} <span style="font-size:9px;color:#a78bfa">Lv.${lv}</span></span>
+          <span class="drop-card-name" style="color:${RARITY_COLOR[e.rarity]}">${e.name} <span style="font-size:9px;color:#a78bfa">Lv.${lv}</span>${e.isPity ? ' <span style="font-size:8px;background:#7f1d1d;color:#fca5a5;padding:1px 4px;border-radius:3px;font-weight:800">🎯PITY</span>' : ''}</span>
           <span style="display:flex;gap:3px">${srcBadge} ${badge}</span>
         </div>
         <div class="drop-card-sub">${e.slot.icon} ${e.slot.vi} · #${String(e.itemIdx+1).padStart(2,'0')}/66 · Ch${e.ch} · Boss ${e.boss} · ${fmt(e.score)} pts</div>
@@ -2779,6 +2906,7 @@ function chSet(v) {
 function resetChapter() {
   state.bossIdx = 0;
   state.mobDropDone = false;
+  state.pityCount = 0;
   render();
 }
 
@@ -2788,6 +2916,7 @@ function resetAll() {
     log: [],
     stats: { total:0, upgrades:0, byRarity:{Common:0,Uncommon:0,Rare:0,Epic:0,Legendary:0} },
     customProb: null,
+    pityCount: 0,
   };
   DROP_RATES = DEFAULT_PROB.map(r => [...r]);
   render();
