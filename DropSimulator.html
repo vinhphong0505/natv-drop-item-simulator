@@ -199,6 +199,7 @@ input[type=range] { width: 100%; accent-color: #7c3aed; }
     <div class="tab" onclick="setTab('stats',this)">📊 Thống Kê</div>
     <div class="tab" onclick="setTab('rarity',this)">📋 Rarity List</div>
     <div class="tab" onclick="setTab('prob',this)">🎲 Xác Suất</div>
+    <div class="tab" onclick="setTab('itemstats',this)">📋 Item Stats</div>
   </div>
 
   <!-- Log tab -->
@@ -245,6 +246,23 @@ input[type=range] { width: 100%; accent-color: #7c3aed; }
     <button class="btn btn-purple btn-sm" style="margin-top:8px;width:100%" onclick="applyProb()">✓ Áp dụng</button>
     <button class="btn btn-gray btn-sm" style="margin-top:4px;width:100%" onclick="resetProb()">↺ Về mặc định</button>
     <div id="probErr" style="color:#f87171;font-size:11px;margin-top:4px"></div>
+  </div>
+
+  <div id="tab-itemstats" style="display:none">
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+      <select id="isSlotFilter" onchange="renderItemStats()" style="flex:1;background:#1a1a2e;color:#e2e8f0;border:1px solid #374151;border-radius:6px;padding:4px 6px;font-size:11px">
+        <option value="all">Tất cả slot</option>
+      </select>
+      <select id="isRarityFilter" onchange="renderItemStats()" style="flex:1;background:#1a1a2e;color:#e2e8f0;border:1px solid #374151;border-radius:6px;padding:4px 6px;font-size:11px">
+        <option value="all">Tất cả rarity</option>
+        <option value="Common">Common</option>
+        <option value="Uncommon">Uncommon</option>
+        <option value="Rare">Rare</option>
+        <option value="Epic">Epic</option>
+        <option value="Legendary">Legendary</option>
+      </select>
+    </div>
+    <div id="itemStatsContent"></div>
   </div>
 </div>
 
@@ -1300,74 +1318,6 @@ const ITEM_STATS = {
     64: {C: {s1:"29.12%",s2:""},U: {s1:"32.04%",s2:""},R: {s1:"35.53%",s2:"0.5"},E: {s1:"39.61%",s2:"0.5"},L: {s1:"44.27%",s2:"0.5"}},
     65: {C: {s1:"29.62%",s2:""},U: {s1:"32.59%",s2:""},R: {s1:"36.14%",s2:"0.51"},E: {s1:"40.29%",s2:"0.51"},L: {s1:"45.03%",s2:"0.51"}}
   },
-  ring: {
-    0: {C: {s1:"2.00%",s2:""},U: {s1:"2.20%",s2:""},R: {s1:"2.44%",s2:""},E: {s1:"2.72%",s2:""},L: {s1:"3.04%",s2:""}},
-    1: {C: {s1:"2.12%",s2:""},U: {s1:"2.34%",s2:""},R: {s1:"2.59%",s2:""},E: {s1:"2.89%",s2:""},L: {s1:"3.23%",s2:""}},
-    2: {C: {s1:"2.25%",s2:""},U: {s1:"2.48%",s2:""},R: {s1:"2.75%",s2:""},E: {s1:"3.06%",s2:""},L: {s1:"3.42%",s2:""}},
-    3: {C: {s1:"2.38%",s2:""},U: {s1:"2.61%",s2:""},R: {s1:"2.90%",s2:""},E: {s1:"3.23%",s2:""},L: {s1:"3.61%",s2:""}},
-    4: {C: {s1:"2.50%",s2:""},U: {s1:"2.75%",s2:""},R: {s1:"3.05%",s2:""},E: {s1:"3.40%",s2:""},L: {s1:"3.80%",s2:""}},
-    5: {C: {s1:"2.62%",s2:""},U: {s1:"2.89%",s2:""},R: {s1:"3.20%",s2:""},E: {s1:"3.57%",s2:""},L: {s1:"3.99%",s2:""}},
-    6: {C: {s1:"2.75%",s2:""},U: {s1:"3.03%",s2:""},R: {s1:"3.35%",s2:""},E: {s1:"3.74%",s2:""},L: {s1:"4.18%",s2:""}},
-    7: {C: {s1:"2.88%",s2:""},U: {s1:"3.16%",s2:""},R: {s1:"3.51%",s2:""},E: {s1:"3.91%",s2:""},L: {s1:"4.37%",s2:""}},
-    8: {C: {s1:"3.00%",s2:""},U: {s1:"3.30%",s2:""},R: {s1:"3.66%",s2:""},E: {s1:"4.08%",s2:""},L: {s1:"4.56%",s2:""}},
-    9: {C: {s1:"3.12%",s2:""},U: {s1:"3.44%",s2:""},R: {s1:"3.81%",s2:""},E: {s1:"4.25%",s2:""},L: {s1:"4.75%",s2:""}},
-    10: {C: {s1:"3.25%",s2:""},U: {s1:"3.58%",s2:""},R: {s1:"3.96%",s2:""},E: {s1:"4.42%",s2:""},L: {s1:"4.94%",s2:""}},
-    11: {C: {s1:"3.38%",s2:""},U: {s1:"3.71%",s2:""},R: {s1:"4.12%",s2:""},E: {s1:"4.59%",s2:""},L: {s1:"5.13%",s2:""}},
-    12: {C: {s1:"3.50%",s2:""},U: {s1:"3.85%",s2:""},R: {s1:"4.27%",s2:""},E: {s1:"4.76%",s2:""},L: {s1:"5.32%",s2:""}},
-    13: {C: {s1:"3.62%",s2:""},U: {s1:"3.99%",s2:""},R: {s1:"4.42%",s2:""},E: {s1:"4.93%",s2:""},L: {s1:"5.51%",s2:""}},
-    14: {C: {s1:"3.75%",s2:""},U: {s1:"4.12%",s2:""},R: {s1:"4.58%",s2:""},E: {s1:"5.10%",s2:""},L: {s1:"5.70%",s2:""}},
-    15: {C: {s1:"3.88%",s2:""},U: {s1:"4.26%",s2:""},R: {s1:"4.73%",s2:""},E: {s1:"5.27%",s2:""},L: {s1:"5.89%",s2:""}},
-    16: {C: {s1:"4.06%",s2:""},U: {s1:"4.47%",s2:""},R: {s1:"4.96%",s2:""},E: {s1:"5.53%",s2:""},L: {s1:"6.17%",s2:""}},
-    17: {C: {s1:"4.25%",s2:""},U: {s1:"4.68%",s2:""},R: {s1:"5.18%",s2:""},E: {s1:"5.78%",s2:""},L: {s1:"6.46%",s2:""}},
-    18: {C: {s1:"4.44%",s2:""},U: {s1:"4.88%",s2:""},R: {s1:"5.41%",s2:""},E: {s1:"6.04%",s2:""},L: {s1:"6.75%",s2:""}},
-    19: {C: {s1:"4.62%",s2:""},U: {s1:"5.09%",s2:""},R: {s1:"5.64%",s2:""},E: {s1:"6.29%",s2:""},L: {s1:"7.03%",s2:""}},
-    20: {C: {s1:"4.81%",s2:""},U: {s1:"5.29%",s2:""},R: {s1:"5.87%",s2:""},E: {s1:"6.55%",s2:""},L: {s1:"7.32%",s2:""}},
-    21: {C: {s1:"5.00%",s2:""},U: {s1:"5.50%",s2:""},R: {s1:"6.10%",s2:""},E: {s1:"6.80%",s2:""},L: {s1:"7.60%",s2:""}},
-    22: {C: {s1:"5.19%",s2:""},U: {s1:"5.71%",s2:""},R: {s1:"6.33%",s2:""},E: {s1:"7.06%",s2:""},L: {s1:"7.88%",s2:""}},
-    23: {C: {s1:"5.38%",s2:""},U: {s1:"5.91%",s2:""},R: {s1:"6.56%",s2:""},E: {s1:"7.31%",s2:""},L: {s1:"8.17%",s2:""}},
-    24: {C: {s1:"5.56%",s2:""},U: {s1:"6.12%",s2:""},R: {s1:"6.79%",s2:"5.82%"},E: {s1:"7.57%",s2:"6.49%"},L: {s1:"8.46%",s2:"7.25%"}},
-    25: {C: {s1:"5.75%",s2:""},U: {s1:"6.33%",s2:""},R: {s1:"7.01%",s2:"5.92%"},E: {s1:"7.82%",s2:"6.60%"},L: {s1:"8.74%",s2:"7.38%"}},
-    26: {C: {s1:"5.94%",s2:""},U: {s1:"6.53%",s2:""},R: {s1:"7.24%",s2:"6.02%"},E: {s1:"8.08%",s2:"6.71%"},L: {s1:"9.03%",s2:"7.50%"}},
-    27: {C: {s1:"6.12%",s2:""},U: {s1:"6.74%",s2:""},R: {s1:"7.47%",s2:"6.12%"},E: {s1:"8.33%",s2:"6.82%"},L: {s1:"9.31%",s2:"7.63%"}},
-    28: {C: {s1:"6.31%",s2:""},U: {s1:"6.94%",s2:""},R: {s1:"7.70%",s2:"6.22%"},E: {s1:"8.59%",s2:"6.94%"},L: {s1:"9.60%",s2:"7.75%"}},
-    29: {C: {s1:"6.50%",s2:""},U: {s1:"7.15%",s2:""},R: {s1:"7.93%",s2:"6.32%"},E: {s1:"8.84%",s2:"7.05%"},L: {s1:"9.88%",s2:"7.88%"}},
-    30: {C: {s1:"6.69%",s2:""},U: {s1:"7.36%",s2:""},R: {s1:"8.16%",s2:"6.42%"},E: {s1:"9.10%",s2:"7.16%"},L: {s1:"10.17%",s2:"8.00%"}},
-    31: {C: {s1:"6.88%",s2:""},U: {s1:"7.56%",s2:""},R: {s1:"8.39%",s2:"6.53%"},E: {s1:"9.35%",s2:"7.27%"},L: {s1:"10.45%",s2:"8.13%"}},
-    32: {C: {s1:"7.06%",s2:""},U: {s1:"7.77%",s2:""},R: {s1:"8.62%",s2:"6.63%"},E: {s1:"9.61%",s2:"7.39%"},L: {s1:"10.73%",s2:"8.26%"}},
-    33: {C: {s1:"7.25%",s2:""},U: {s1:"7.98%",s2:""},R: {s1:"8.85%",s2:"6.73%"},E: {s1:"9.86%",s2:"7.50%"},L: {s1:"11.02%",s2:"8.38%"}},
-    34: {C: {s1:"7.44%",s2:""},U: {s1:"8.18%",s2:""},R: {s1:"9.07%",s2:"6.83%"},E: {s1:"10.12%",s2:"7.61%"},L: {s1:"11.30%",s2:"8.51%"}},
-    35: {C: {s1:"7.62%",s2:""},U: {s1:"8.39%",s2:""},R: {s1:"9.30%",s2:"6.93%"},E: {s1:"10.37%",s2:"7.72%"},L: {s1:"11.59%",s2:"8.63%"}},
-    36: {C: {s1:"7.81%",s2:""},U: {s1:"8.59%",s2:""},R: {s1:"9.53%",s2:"7.03%"},E: {s1:"10.62%",s2:"7.84%"},L: {s1:"11.88%",s2:"8.76%"}},
-    37: {C: {s1:"8.00%",s2:""},U: {s1:"8.80%",s2:""},R: {s1:"9.76%",s2:"7.13%"},E: {s1:"10.88%",s2:"7.95%"},L: {s1:"12.16%",s2:"8.88%"}},
-    38: {C: {s1:"8.19%",s2:""},U: {s1:"9.01%",s2:""},R: {s1:"9.99%",s2:"7.23%"},E: {s1:"11.14%",s2:"8.06%"},L: {s1:"12.45%",s2:"9.01%"}},
-    39: {C: {s1:"8.38%",s2:""},U: {s1:"9.21%",s2:""},R: {s1:"10.22%",s2:"7.33%"},E: {s1:"11.39%",s2:"8.17%"},L: {s1:"12.73%",s2:"9.13%"}},
-    40: {C: {s1:"8.56%",s2:""},U: {s1:"9.42%",s2:""},R: {s1:"10.45%",s2:"7.43%"},E: {s1:"11.65%",s2:"8.28%"},L: {s1:"13.02%",s2:"9.26%"}},
-    41: {C: {s1:"8.81%",s2:""},U: {s1:"9.69%",s2:""},R: {s1:"10.75%",s2:"7.53%"},E: {s1:"11.99%",s2:"8.40%"},L: {s1:"13.39%",s2:"9.38%"}},
-    42: {C: {s1:"9.06%",s2:""},U: {s1:"9.97%",s2:""},R: {s1:"11.06%",s2:"7.63%"},E: {s1:"12.33%",s2:"8.51%"},L: {s1:"13.78%",s2:"9.51%"}},
-    43: {C: {s1:"9.31%",s2:""},U: {s1:"10.24%",s2:""},R: {s1:"11.36%",s2:"7.73%"},E: {s1:"12.67%",s2:"8.62%"},L: {s1:"14.15%",s2:"9.64%"}},
-    44: {C: {s1:"9.56%",s2:""},U: {s1:"10.52%",s2:""},R: {s1:"11.67%",s2:"7.83%"},E: {s1:"13.01%",s2:"8.73%"},L: {s1:"14.54%",s2:"9.76%"}},
-    45: {C: {s1:"9.81%",s2:""},U: {s1:"10.79%",s2:""},R: {s1:"11.97%",s2:"7.94%"},E: {s1:"13.35%",s2:"8.85%"},L: {s1:"14.92%",s2:"9.89%"}},
-    46: {C: {s1:"10.06%",s2:""},U: {s1:"11.07%",s2:""},R: {s1:"12.28%",s2:"8.04%"},E: {s1:"13.69%",s2:"8.96%"},L: {s1:"15.29%",s2:"10.01%"}},
-    47: {C: {s1:"10.31%",s2:""},U: {s1:"11.34%",s2:""},R: {s1:"12.58%",s2:"8.14%"},E: {s1:"14.03%",s2:"9.07%"},L: {s1:"15.68%",s2:"10.14%"}},
-    48: {C: {s1:"10.56%",s2:""},U: {s1:"11.62%",s2:""},R: {s1:"12.89%",s2:"8.24%"},E: {s1:"14.37%",s2:"9.18%"},L: {s1:"16.05%",s2:"10.26%"}},
-    49: {C: {s1:"10.81%",s2:""},U: {s1:"11.89%",s2:""},R: {s1:"13.19%",s2:"8.34%"},E: {s1:"14.71%",s2:"9.30%"},L: {s1:"16.43%",s2:"10.39%"}},
-    50: {C: {s1:"11.06%",s2:""},U: {s1:"12.17%",s2:""},R: {s1:"13.50%",s2:"8.44%"},E: {s1:"15.05%",s2:"9.41%"},L: {s1:"16.82%",s2:"10.51%"}},
-    51: {C: {s1:"11.31%",s2:""},U: {s1:"12.44%",s2:""},R: {s1:"13.80%",s2:"8.54%"},E: {s1:"15.39%",s2:"9.52%"},L: {s1:"17.20%",s2:"10.64%"}},
-    52: {C: {s1:"11.56%",s2:""},U: {s1:"12.72%",s2:""},R: {s1:"14.11%",s2:"8.64%"},E: {s1:"15.73%",s2:"9.63%"},L: {s1:"17.57%",s2:"10.77%"}},
-    53: {C: {s1:"11.81%",s2:""},U: {s1:"12.99%",s2:""},R: {s1:"14.41%",s2:"8.74%"},E: {s1:"16.07%",s2:"9.74%"},L: {s1:"17.96%",s2:"10.89%"}},
-    54: {C: {s1:"12.06%",s2:""},U: {s1:"13.27%",s2:""},R: {s1:"14.72%",s2:"8.84%"},E: {s1:"16.41%",s2:"9.86%"},L: {s1:"18.34%",s2:"11.02%"}},
-    55: {C: {s1:"12.31%",s2:""},U: {s1:"13.54%",s2:""},R: {s1:"15.02%",s2:"8.94%"},E: {s1:"16.75%",s2:"9.97%"},L: {s1:"18.71%",s2:"11.14%"}},
-    56: {C: {s1:"12.56%",s2:""},U: {s1:"13.82%",s2:""},R: {s1:"15.33%",s2:"9.04%"},E: {s1:"17.09%",s2:"10.08%"},L: {s1:"19.09%",s2:"11.27%"}},
-    57: {C: {s1:"12.81%",s2:""},U: {s1:"14.09%",s2:""},R: {s1:"15.63%",s2:"9.14%"},E: {s1:"17.43%",s2:"10.19%"},L: {s1:"19.48%",s2:"11.39%"}},
-    58: {C: {s1:"13.06%",s2:""},U: {s1:"14.37%",s2:""},R: {s1:"15.94%",s2:"9.24%"},E: {s1:"17.77%",s2:"10.31%"},L: {s1:"19.86%",s2:"11.52%"}},
-    59: {C: {s1:"13.31%",s2:""},U: {s1:"14.64%",s2:""},R: {s1:"16.24%",s2:"9.35%"},E: {s1:"18.11%",s2:"10.42%"},L: {s1:"20.23%",s2:"11.64%"}},
-    60: {C: {s1:"13.56%",s2:""},U: {s1:"14.92%",s2:""},R: {s1:"16.55%",s2:"9.45%"},E: {s1:"18.45%",s2:"10.53%"},L: {s1:"20.62%",s2:"11.77%"}},
-    61: {C: {s1:"13.81%",s2:""},U: {s1:"15.19%",s2:""},R: {s1:"16.85%",s2:"9.55%"},E: {s1:"18.79%",s2:"10.64%"},L: {s1:"21.00%",s2:"11.89%"}},
-    62: {C: {s1:"14.06%",s2:""},U: {s1:"15.47%",s2:""},R: {s1:"17.16%",s2:"9.65%"},E: {s1:"19.12%",s2:"10.75%"},L: {s1:"21.38%",s2:"12.02%"}},
-    63: {C: {s1:"14.31%",s2:""},U: {s1:"15.74%",s2:""},R: {s1:"17.46%",s2:"9.75%"},E: {s1:"19.46%",s2:"10.87%"},L: {s1:"21.75%",s2:"12.15%"}},
-    64: {C: {s1:"14.56%",s2:""},U: {s1:"16.02%",s2:""},R: {s1:"17.77%",s2:"9.85%"},E: {s1:"19.80%",s2:"10.98%"},L: {s1:"22.14%",s2:"12.27%"}},
-    65: {C: {s1:"14.81%",s2:""},U: {s1:"16.29%",s2:""},R: {s1:"18.07%",s2:"9.95%"},E: {s1:"20.15%",s2:"11.09%"},L: {s1:"22.52%",s2:"12.40%"}}
-  },
   necklace: {
     0: {C: {s1:"4.00%",s2:""},U: {s1:"4.40%",s2:""},R: {s1:"4.88%",s2:""},E: {s1:"5.44%",s2:""},L: {s1:"6.08%",s2:""}},
     1: {C: {s1:"4.25%",s2:""},U: {s1:"4.68%",s2:""},R: {s1:"5.18%",s2:""},E: {s1:"5.78%",s2:""},L: {s1:"6.46%",s2:""}},
@@ -1435,6 +1385,74 @@ const ITEM_STATS = {
     63: {C: {s1:"28.62%",s2:""},U: {s1:"31.49%",s2:""},R: {s1:"34.92%",s2:"10.53%"},E: {s1:"38.93%",s2:"11.74%"},L: {s1:"43.51%",s2:"13.12%"}},
     64: {C: {s1:"29.12%",s2:""},U: {s1:"32.04%",s2:""},R: {s1:"35.53%",s2:"10.65%"},E: {s1:"39.61%",s2:"11.87%"},L: {s1:"44.27%",s2:"13.27%"}},
     65: {C: {s1:"29.62%",s2:""},U: {s1:"32.59%",s2:""},R: {s1:"36.14%",s2:"10.77%"},E: {s1:"40.29%",s2:"12.01%"},L: {s1:"45.03%",s2:"13.42%"}}
+  },
+  ring: {
+    0: {C: {s1:"2.00%",s2:""},U: {s1:"2.20%",s2:""},R: {s1:"2.44%",s2:""},E: {s1:"2.72%",s2:""},L: {s1:"3.04%",s2:""}},
+    1: {C: {s1:"2.12%",s2:""},U: {s1:"2.34%",s2:""},R: {s1:"2.59%",s2:""},E: {s1:"2.89%",s2:""},L: {s1:"3.23%",s2:""}},
+    2: {C: {s1:"2.25%",s2:""},U: {s1:"2.48%",s2:""},R: {s1:"2.75%",s2:""},E: {s1:"3.06%",s2:""},L: {s1:"3.42%",s2:""}},
+    3: {C: {s1:"2.38%",s2:""},U: {s1:"2.61%",s2:""},R: {s1:"2.90%",s2:""},E: {s1:"3.23%",s2:""},L: {s1:"3.61%",s2:""}},
+    4: {C: {s1:"2.50%",s2:""},U: {s1:"2.75%",s2:""},R: {s1:"3.05%",s2:""},E: {s1:"3.40%",s2:""},L: {s1:"3.80%",s2:""}},
+    5: {C: {s1:"2.62%",s2:""},U: {s1:"2.89%",s2:""},R: {s1:"3.20%",s2:""},E: {s1:"3.57%",s2:""},L: {s1:"3.99%",s2:""}},
+    6: {C: {s1:"2.75%",s2:""},U: {s1:"3.03%",s2:""},R: {s1:"3.35%",s2:""},E: {s1:"3.74%",s2:""},L: {s1:"4.18%",s2:""}},
+    7: {C: {s1:"2.88%",s2:""},U: {s1:"3.16%",s2:""},R: {s1:"3.51%",s2:""},E: {s1:"3.91%",s2:""},L: {s1:"4.37%",s2:""}},
+    8: {C: {s1:"3.00%",s2:""},U: {s1:"3.30%",s2:""},R: {s1:"3.66%",s2:""},E: {s1:"4.08%",s2:""},L: {s1:"4.56%",s2:""}},
+    9: {C: {s1:"3.12%",s2:""},U: {s1:"3.44%",s2:""},R: {s1:"3.81%",s2:""},E: {s1:"4.25%",s2:""},L: {s1:"4.75%",s2:""}},
+    10: {C: {s1:"3.25%",s2:""},U: {s1:"3.58%",s2:""},R: {s1:"3.96%",s2:""},E: {s1:"4.42%",s2:""},L: {s1:"4.94%",s2:""}},
+    11: {C: {s1:"3.38%",s2:""},U: {s1:"3.71%",s2:""},R: {s1:"4.12%",s2:""},E: {s1:"4.59%",s2:""},L: {s1:"5.13%",s2:""}},
+    12: {C: {s1:"3.50%",s2:""},U: {s1:"3.85%",s2:""},R: {s1:"4.27%",s2:""},E: {s1:"4.76%",s2:""},L: {s1:"5.32%",s2:""}},
+    13: {C: {s1:"3.62%",s2:""},U: {s1:"3.99%",s2:""},R: {s1:"4.42%",s2:""},E: {s1:"4.93%",s2:""},L: {s1:"5.51%",s2:""}},
+    14: {C: {s1:"3.75%",s2:""},U: {s1:"4.12%",s2:""},R: {s1:"4.58%",s2:""},E: {s1:"5.10%",s2:""},L: {s1:"5.70%",s2:""}},
+    15: {C: {s1:"3.88%",s2:""},U: {s1:"4.26%",s2:""},R: {s1:"4.73%",s2:""},E: {s1:"5.27%",s2:""},L: {s1:"5.89%",s2:""}},
+    16: {C: {s1:"4.06%",s2:""},U: {s1:"4.47%",s2:""},R: {s1:"4.96%",s2:""},E: {s1:"5.53%",s2:""},L: {s1:"6.17%",s2:""}},
+    17: {C: {s1:"4.25%",s2:""},U: {s1:"4.68%",s2:""},R: {s1:"5.18%",s2:""},E: {s1:"5.78%",s2:""},L: {s1:"6.46%",s2:""}},
+    18: {C: {s1:"4.44%",s2:""},U: {s1:"4.88%",s2:""},R: {s1:"5.41%",s2:""},E: {s1:"6.04%",s2:""},L: {s1:"6.75%",s2:""}},
+    19: {C: {s1:"4.62%",s2:""},U: {s1:"5.09%",s2:""},R: {s1:"5.64%",s2:""},E: {s1:"6.29%",s2:""},L: {s1:"7.03%",s2:""}},
+    20: {C: {s1:"4.81%",s2:""},U: {s1:"5.29%",s2:""},R: {s1:"5.87%",s2:""},E: {s1:"6.55%",s2:""},L: {s1:"7.32%",s2:""}},
+    21: {C: {s1:"5.00%",s2:""},U: {s1:"5.50%",s2:""},R: {s1:"6.10%",s2:""},E: {s1:"6.80%",s2:""},L: {s1:"7.60%",s2:""}},
+    22: {C: {s1:"5.19%",s2:""},U: {s1:"5.71%",s2:""},R: {s1:"6.33%",s2:""},E: {s1:"7.06%",s2:""},L: {s1:"7.88%",s2:""}},
+    23: {C: {s1:"5.38%",s2:""},U: {s1:"5.91%",s2:""},R: {s1:"6.56%",s2:""},E: {s1:"7.31%",s2:""},L: {s1:"8.17%",s2:""}},
+    24: {C: {s1:"5.56%",s2:""},U: {s1:"6.12%",s2:""},R: {s1:"6.79%",s2:"5.82%"},E: {s1:"7.57%",s2:"6.49%"},L: {s1:"8.46%",s2:"7.25%"}},
+    25: {C: {s1:"5.75%",s2:""},U: {s1:"6.33%",s2:""},R: {s1:"7.01%",s2:"5.92%"},E: {s1:"7.82%",s2:"6.60%"},L: {s1:"8.74%",s2:"7.38%"}},
+    26: {C: {s1:"5.94%",s2:""},U: {s1:"6.53%",s2:""},R: {s1:"7.24%",s2:"6.02%"},E: {s1:"8.08%",s2:"6.71%"},L: {s1:"9.03%",s2:"7.50%"}},
+    27: {C: {s1:"6.12%",s2:""},U: {s1:"6.74%",s2:""},R: {s1:"7.47%",s2:"6.12%"},E: {s1:"8.33%",s2:"6.82%"},L: {s1:"9.31%",s2:"7.63%"}},
+    28: {C: {s1:"6.31%",s2:""},U: {s1:"6.94%",s2:""},R: {s1:"7.70%",s2:"6.22%"},E: {s1:"8.59%",s2:"6.94%"},L: {s1:"9.60%",s2:"7.75%"}},
+    29: {C: {s1:"6.50%",s2:""},U: {s1:"7.15%",s2:""},R: {s1:"7.93%",s2:"6.32%"},E: {s1:"8.84%",s2:"7.05%"},L: {s1:"9.88%",s2:"7.88%"}},
+    30: {C: {s1:"6.69%",s2:""},U: {s1:"7.36%",s2:""},R: {s1:"8.16%",s2:"6.42%"},E: {s1:"9.10%",s2:"7.16%"},L: {s1:"10.17%",s2:"8.00%"}},
+    31: {C: {s1:"6.88%",s2:""},U: {s1:"7.56%",s2:""},R: {s1:"8.39%",s2:"6.53%"},E: {s1:"9.35%",s2:"7.27%"},L: {s1:"10.45%",s2:"8.13%"}},
+    32: {C: {s1:"7.06%",s2:""},U: {s1:"7.77%",s2:""},R: {s1:"8.62%",s2:"6.63%"},E: {s1:"9.61%",s2:"7.39%"},L: {s1:"10.73%",s2:"8.26%"}},
+    33: {C: {s1:"7.25%",s2:""},U: {s1:"7.98%",s2:""},R: {s1:"8.85%",s2:"6.73%"},E: {s1:"9.86%",s2:"7.50%"},L: {s1:"11.02%",s2:"8.38%"}},
+    34: {C: {s1:"7.44%",s2:""},U: {s1:"8.18%",s2:""},R: {s1:"9.07%",s2:"6.83%"},E: {s1:"10.12%",s2:"7.61%"},L: {s1:"11.30%",s2:"8.51%"}},
+    35: {C: {s1:"7.62%",s2:""},U: {s1:"8.39%",s2:""},R: {s1:"9.30%",s2:"6.93%"},E: {s1:"10.37%",s2:"7.72%"},L: {s1:"11.59%",s2:"8.63%"}},
+    36: {C: {s1:"7.81%",s2:""},U: {s1:"8.59%",s2:""},R: {s1:"9.53%",s2:"7.03%"},E: {s1:"10.62%",s2:"7.84%"},L: {s1:"11.88%",s2:"8.76%"}},
+    37: {C: {s1:"8.00%",s2:""},U: {s1:"8.80%",s2:""},R: {s1:"9.76%",s2:"7.13%"},E: {s1:"10.88%",s2:"7.95%"},L: {s1:"12.16%",s2:"8.88%"}},
+    38: {C: {s1:"8.19%",s2:""},U: {s1:"9.01%",s2:""},R: {s1:"9.99%",s2:"7.23%"},E: {s1:"11.14%",s2:"8.06%"},L: {s1:"12.45%",s2:"9.01%"}},
+    39: {C: {s1:"8.38%",s2:""},U: {s1:"9.21%",s2:""},R: {s1:"10.22%",s2:"7.33%"},E: {s1:"11.39%",s2:"8.17%"},L: {s1:"12.73%",s2:"9.13%"}},
+    40: {C: {s1:"8.56%",s2:""},U: {s1:"9.42%",s2:""},R: {s1:"10.45%",s2:"7.43%"},E: {s1:"11.65%",s2:"8.28%"},L: {s1:"13.02%",s2:"9.26%"}},
+    41: {C: {s1:"8.81%",s2:""},U: {s1:"9.69%",s2:""},R: {s1:"10.75%",s2:"7.53%"},E: {s1:"11.99%",s2:"8.40%"},L: {s1:"13.39%",s2:"9.38%"}},
+    42: {C: {s1:"9.06%",s2:""},U: {s1:"9.97%",s2:""},R: {s1:"11.06%",s2:"7.63%"},E: {s1:"12.33%",s2:"8.51%"},L: {s1:"13.78%",s2:"9.51%"}},
+    43: {C: {s1:"9.31%",s2:""},U: {s1:"10.24%",s2:""},R: {s1:"11.36%",s2:"7.73%"},E: {s1:"12.67%",s2:"8.62%"},L: {s1:"14.15%",s2:"9.64%"}},
+    44: {C: {s1:"9.56%",s2:""},U: {s1:"10.52%",s2:""},R: {s1:"11.67%",s2:"7.83%"},E: {s1:"13.01%",s2:"8.73%"},L: {s1:"14.54%",s2:"9.76%"}},
+    45: {C: {s1:"9.81%",s2:""},U: {s1:"10.79%",s2:""},R: {s1:"11.97%",s2:"7.94%"},E: {s1:"13.35%",s2:"8.85%"},L: {s1:"14.92%",s2:"9.89%"}},
+    46: {C: {s1:"10.06%",s2:""},U: {s1:"11.07%",s2:""},R: {s1:"12.28%",s2:"8.04%"},E: {s1:"13.69%",s2:"8.96%"},L: {s1:"15.29%",s2:"10.01%"}},
+    47: {C: {s1:"10.31%",s2:""},U: {s1:"11.34%",s2:""},R: {s1:"12.58%",s2:"8.14%"},E: {s1:"14.03%",s2:"9.07%"},L: {s1:"15.68%",s2:"10.14%"}},
+    48: {C: {s1:"10.56%",s2:""},U: {s1:"11.62%",s2:""},R: {s1:"12.89%",s2:"8.24%"},E: {s1:"14.37%",s2:"9.18%"},L: {s1:"16.05%",s2:"10.26%"}},
+    49: {C: {s1:"10.81%",s2:""},U: {s1:"11.89%",s2:""},R: {s1:"13.19%",s2:"8.34%"},E: {s1:"14.71%",s2:"9.30%"},L: {s1:"16.43%",s2:"10.39%"}},
+    50: {C: {s1:"11.06%",s2:""},U: {s1:"12.17%",s2:""},R: {s1:"13.50%",s2:"8.44%"},E: {s1:"15.05%",s2:"9.41%"},L: {s1:"16.82%",s2:"10.51%"}},
+    51: {C: {s1:"11.31%",s2:""},U: {s1:"12.44%",s2:""},R: {s1:"13.80%",s2:"8.54%"},E: {s1:"15.39%",s2:"9.52%"},L: {s1:"17.20%",s2:"10.64%"}},
+    52: {C: {s1:"11.56%",s2:""},U: {s1:"12.72%",s2:""},R: {s1:"14.11%",s2:"8.64%"},E: {s1:"15.73%",s2:"9.63%"},L: {s1:"17.57%",s2:"10.77%"}},
+    53: {C: {s1:"11.81%",s2:""},U: {s1:"12.99%",s2:""},R: {s1:"14.41%",s2:"8.74%"},E: {s1:"16.07%",s2:"9.74%"},L: {s1:"17.96%",s2:"10.89%"}},
+    54: {C: {s1:"12.06%",s2:""},U: {s1:"13.27%",s2:""},R: {s1:"14.72%",s2:"8.84%"},E: {s1:"16.41%",s2:"9.86%"},L: {s1:"18.34%",s2:"11.02%"}},
+    55: {C: {s1:"12.31%",s2:""},U: {s1:"13.54%",s2:""},R: {s1:"15.02%",s2:"8.94%"},E: {s1:"16.75%",s2:"9.97%"},L: {s1:"18.71%",s2:"11.14%"}},
+    56: {C: {s1:"12.56%",s2:""},U: {s1:"13.82%",s2:""},R: {s1:"15.33%",s2:"9.04%"},E: {s1:"17.09%",s2:"10.08%"},L: {s1:"19.09%",s2:"11.27%"}},
+    57: {C: {s1:"12.81%",s2:""},U: {s1:"14.09%",s2:""},R: {s1:"15.63%",s2:"9.14%"},E: {s1:"17.43%",s2:"10.19%"},L: {s1:"19.48%",s2:"11.39%"}},
+    58: {C: {s1:"13.06%",s2:""},U: {s1:"14.37%",s2:""},R: {s1:"15.94%",s2:"9.24%"},E: {s1:"17.77%",s2:"10.31%"},L: {s1:"19.86%",s2:"11.52%"}},
+    59: {C: {s1:"13.31%",s2:""},U: {s1:"14.64%",s2:""},R: {s1:"16.24%",s2:"9.35%"},E: {s1:"18.11%",s2:"10.42%"},L: {s1:"20.23%",s2:"11.64%"}},
+    60: {C: {s1:"13.56%",s2:""},U: {s1:"14.92%",s2:""},R: {s1:"16.55%",s2:"9.45%"},E: {s1:"18.45%",s2:"10.53%"},L: {s1:"20.62%",s2:"11.77%"}},
+    61: {C: {s1:"13.81%",s2:""},U: {s1:"15.19%",s2:""},R: {s1:"16.85%",s2:"9.55%"},E: {s1:"18.79%",s2:"10.64%"},L: {s1:"21.00%",s2:"11.89%"}},
+    62: {C: {s1:"14.06%",s2:""},U: {s1:"15.47%",s2:""},R: {s1:"17.16%",s2:"9.65%"},E: {s1:"19.12%",s2:"10.75%"},L: {s1:"21.38%",s2:"12.02%"}},
+    63: {C: {s1:"14.31%",s2:""},U: {s1:"15.74%",s2:""},R: {s1:"17.46%",s2:"9.75%"},E: {s1:"19.46%",s2:"10.87%"},L: {s1:"21.75%",s2:"12.15%"}},
+    64: {C: {s1:"14.56%",s2:""},U: {s1:"16.02%",s2:""},R: {s1:"17.77%",s2:"9.85%"},E: {s1:"19.80%",s2:"10.98%"},L: {s1:"22.14%",s2:"12.27%"}},
+    65: {C: {s1:"14.81%",s2:""},U: {s1:"16.29%",s2:""},R: {s1:"18.07%",s2:"9.95%"},E: {s1:"20.15%",s2:"11.09%"},L: {s1:"22.52%",s2:"12.40%"}}
   },
   waist: {
     0: {C: {s1:"8.00%",s2:""},U: {s1:"8.80%",s2:""},R: {s1:"9.76%",s2:""},E: {s1:"10.88%",s2:""},L: {s1:"12.16%",s2:""}},
@@ -1615,6 +1633,7 @@ function calcScore(item, rarity) { return item.scoresMap ? (item.scoresMap[rarit
 // ═══════════════════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════════════════
+let rdPending = null; // popup pending decision
 let state = {
   chapter: 1,
   bossIdx: 0,       // 0-indexed boss within chapter
@@ -1670,6 +1689,7 @@ function rollSlot() {
 }
 
 function doMobDrop() {
+  if (rdPending) return; // chặn khi popup đang mở
   if (state.mobDropDone) return;
   if (state.bossIdx >= totalBosses(state.chapter)) return;
 
@@ -1693,7 +1713,7 @@ function doMobDrop() {
   // Hướng B: rarity thấp hơn nhưng score cao hơn → hỏi user
   if (isRarityDownMob && score > current.score && !isSameItemHigherRarity) {
     rdShow(slot, item, rarity, score, current, ch, state.bossIdx + 1, false, true);
-    return; // chờ user quyết định
+    return;
   }
   const isUpgrade = isNew || score > current.score || isSameItemHigherRarity;
 
@@ -1717,6 +1737,7 @@ function doMobDrop() {
 
 
 function doBoss() {
+  if (rdPending) return; // chặn khi popup đang mở
   const ch = state.chapter;
   const bosses = totalBosses(ch);
   if (state.bossIdx >= bosses) return;
@@ -1746,7 +1767,8 @@ function doBoss() {
     // Hướng B: rarity thấp hơn nhưng score cao hơn → hỏi user (KHÔNG áp dụng cho final boss vì Hướng C đã guarantee)
     if (isRarityDown && score > current.score && !isSameItemHigherRarity && !isFinal) {
       rdShow(slot, item, rarity, score, current, ch, state.bossIdx, isFinal, false);
-      return; // chờ user quyết định (stats sẽ được đếm trong rdDecide)
+      render(); // lock buttons trong khi chờ popup
+      return;
     }
     const isUpgrade = score > current.score || isSameItemHigherRarity;
     if (isUpgrade) {
@@ -1862,12 +1884,14 @@ function resetAll() {
 function chChange(d) {
   state.chapter = Math.max(1, Math.min(24, state.chapter+d));
   state.bossIdx = 0;
+  state.mobDropDone = false;
   document.getElementById('chSlider').value = state.chapter;
   render();
 }
 function chSet(v) {
   state.chapter = parseInt(v);
   state.bossIdx = 0;
+  state.mobDropDone = false;
   render();
 }
 
@@ -2064,6 +2088,71 @@ function buildProbEditor() {
   document.getElementById('probEditor').innerHTML = html;
 }
 
+// ═══════════════════════════════════════════════════════
+//  POPUP HƯỚNG B — Rarity thấp hơn nhưng score cao hơn
+// ═══════════════════════════════════════════════════════
+function rdStatHtml(slotId, itemIdx, rarity) {
+  const RARITY_SHORT = {Common:'C',Uncommon:'U',Rare:'R',Epic:'E',Legendary:'L'};
+  const labels = SLOT_STAT_LABELS[slotId] || {};
+  const st = ITEM_STATS[slotId]?.[itemIdx]?.[RARITY_SHORT[rarity]];
+  if (!st) return '';
+  const showS2Slot = ['Rare','Epic','Legendary'].includes(rarity); // Rare+ luôn có dòng s2
+  const s1html = st.s1
+    ? `<span style="color:#94a3b8;font-size:9px">${labels.s1||'S1'}</span> <span style="color:#e2e8f0;font-size:10px;font-weight:700">${st.s1}</span>`
+    : '';
+  let s2html = '';
+  if (st.s2) {
+    s2html = `<span style="color:#94a3b8;font-size:9px">${labels.s2||'S2'}</span> <span style="color:#e2e8f0;font-size:10px;font-weight:700">${st.s2}</span>`;
+  } else if (showS2Slot && labels.s2) {
+    s2html = `<span style="color:#94a3b8;font-size:9px">${labels.s2}</span> <span style="color:#4b5563;font-size:10px">—</span>`;
+  }
+  const sep = (s1html && s2html) ? ' &nbsp; ' : '';
+  return `<div style="margin-top:4px;line-height:1.6">${s1html}${sep}${s2html}</div>`;
+}
+
+function rdShow(slot, item, rarity, score, current, ch, boss, isFinal, isMobDrop) {
+  const lv = ITEM_LEVELS[slot.id]?.[item.idx] || '?';
+  const lvOld = ITEM_LEVELS[slot.id]?.[current.itemIdx] || '?';
+  const diff = score - current.score;
+  document.getElementById('rdNew').className = `rd-item ${RARITY_BG[rarity]}`;
+  document.getElementById('rdNew').innerHTML = `
+    <div class="rd-item-label">MỚI DROP</div>
+    <div class="rd-item-name" style="color:${RARITY_COLOR[rarity]}">${item.name}</div>
+    <div class="rd-item-lv">Lv.${lv} · ${rarity}</div>
+    <div class="rd-item-score" style="color:${RARITY_COLOR[rarity]}">${fmt(score)}</div>
+    ${rdStatHtml(slot.id, item.idx, rarity)}`;
+  document.getElementById('rdOld').className = `rd-item ${RARITY_BG[current.rarity]}`;
+  document.getElementById('rdOld').innerHTML = `
+    <div class="rd-item-label">ĐANG EQUIP</div>
+    <div class="rd-item-name" style="color:${RARITY_COLOR[current.rarity]}">${current.name}</div>
+    <div class="rd-item-lv">Lv.${lvOld} · ${current.rarity}</div>
+    <div class="rd-item-score" style="color:${RARITY_COLOR[current.rarity]}">${fmt(current.score)}</div>
+    ${rdStatHtml(slot.id, current.itemIdx, current.rarity)}`;
+  document.getElementById('rdNote').innerHTML =
+    `Score cao hơn <strong style="color:#34d399">+${fmt(diff)}</strong> nhưng rarity thấp hơn (<span style="color:${RARITY_COLOR[current.rarity]}">${current.rarity}</span> → <span style="color:${RARITY_COLOR[rarity]}">${rarity}</span>).<br>Bạn muốn trang bị hay bán?`;
+  rdPending = { slot, item, rarity, score, current, ch, boss, isFinal, isMobDrop };
+  document.getElementById('rdOverlay').style.display = 'flex';
+}
+
+function rdDecide(equip) {
+  document.getElementById('rdOverlay').style.display = 'none';
+  if (!rdPending) return;
+  const { slot, item, rarity, score, current, ch, boss, isFinal, isMobDrop } = rdPending;
+  rdPending = null;
+  const isUpgrade = equip;
+  if (equip) {
+    state.gear[slot.id] = { name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, chapter: ch };
+    state.stats.upgrades++;
+  }
+  state.stats.total++;
+  state.stats.byRarity[rarity]++;
+  const entry = { ch, boss, isFinal, isMobDrop, slot, name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, isUpgrade, isNew: false, prevScore: current.score, prevName: current.name, prevRarity: current.rarity, prevItemIdx: current.itemIdx };
+  state.log.unshift(entry);
+  if (state.log.length > 200) state.log.pop();
+  if (isMobDrop) state.mobDropDone = true;
+  render();
+}
+
 function applyProb() {
   const p = [];
   for (let gi=0; gi<8; gi++) {
@@ -2100,7 +2189,7 @@ function clearLog() {
 }
 
 function setTab(tab, el) {
-  ['log','stats','rarity','prob'].forEach(t => {
+  ['log','stats','rarity','prob','itemstats'].forEach(t => {
     const panel = document.getElementById('tab-'+t);
     if (panel) panel.style.display = t===tab ? '' : 'none';
   });
@@ -2109,6 +2198,61 @@ function setTab(tab, el) {
   if (tab === 'rarity') renderRarityList();
   if (tab === 'prob') buildProbEditor();
   if (tab === 'stats') renderStats();
+  if (tab === 'itemstats') initItemStats();
+}
+
+function initItemStats() {
+  const sel = document.getElementById('isSlotFilter');
+  if (sel.options.length <= 1) {
+    SLOTS.forEach(sl => {
+      const opt = document.createElement('option');
+      opt.value = sl.id; opt.textContent = `${sl.icon} ${sl.vi}`;
+      sel.appendChild(opt);
+    });
+  }
+  renderItemStats();
+}
+
+function renderItemStats() {
+  const RARITY_SHORT = {Common:'C',Uncommon:'U',Rare:'R',Epic:'E',Legendary:'L'};
+  const slotF = document.getElementById('isSlotFilter').value;
+  const rarF  = document.getElementById('isRarityFilter').value;
+  const raritiesShow = rarF === 'all' ? RARITIES : [rarF];
+  const slotsShow = slotF === 'all' ? SLOTS : SLOTS.filter(s => s.id === slotF);
+
+  let html = '';
+  slotsShow.forEach(sl => {
+    const labels = SLOT_STAT_LABELS[sl.id] || {};
+    html += `<div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin:10px 0 4px">${sl.icon} ${sl.vi}</div>`;
+    // header row
+    html += `<div style="display:grid;grid-template-columns:24px 1fr repeat(${raritiesShow.length*2},1fr);gap:2px;font-size:9px;color:#6b7280;font-weight:700;padding:2px 4px;background:#1a1a2e;border-radius:4px;margin-bottom:2px">
+      <span>#</span><span>Item</span>`;
+    raritiesShow.forEach(r => {
+      html += `<span style="color:${RARITY_COLOR[r]};text-align:center">${r.slice(0,1)} ${labels.s1||'S1'}</span>`;
+      html += `<span style="color:${RARITY_COLOR[r]};text-align:center">${r.slice(0,1)} ${labels.s2||'S2'}</span>`;
+    });
+    html += `</div>`;
+
+    let lastCh = 0;
+    ITEM_POOLS[sl.id].forEach(item => {
+      if (item.chapter !== lastCh) {
+        html += `<div style="font-size:9px;color:#4b5563;padding:3px 4px 1px">Ch ${item.chapter}</div>`;
+        lastCh = item.chapter;
+      }
+      html += `<div style="display:grid;grid-template-columns:24px 1fr repeat(${raritiesShow.length*2},1fr);gap:2px;font-size:9px;padding:2px 4px;border-bottom:1px solid #1f2937;align-items:center">
+        <span style="color:#4b5563">${item.idx+1}</span>
+        <span style="color:#d1d5db;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${item.name}">${item.name}</span>`;
+      raritiesShow.forEach(r => {
+        const st = ITEM_STATS[sl.id]?.[item.idx]?.[RARITY_SHORT[r]];
+        const s1 = st?.s1 || '—';
+        const s2 = st?.s2 || '—';
+        html += `<span style="color:${RARITY_COLOR[r]};text-align:center">${s1}</span>`;
+        html += `<span style="color:${s2==='—'?'#4b5563':RARITY_COLOR[r]};text-align:center">${s2}</span>`;
+      });
+      html += `</div>`;
+    });
+  });
+  document.getElementById('itemStatsContent').innerHTML = html;
 }
 
 function renderRarityList() {
@@ -2138,78 +2282,18 @@ function renderRarityList() {
   document.getElementById('rarityListContent').innerHTML = html || '<div style="color:#6b7280;font-size:11px">Không có dữ liệu</div>';
 }
 
-// ═══════════════════════════════════════════════════════
-//  INIT
-// ═══════════════════════════════════════════════════════
-// Populate slot filters
+
 ['slotFilter','raritySlotFilter'].forEach(id => {
   const sel = document.getElementById(id);
   if (!sel) return;
   SLOTS.forEach(sl => {
     const opt = document.createElement('option');
-    opt.value = sl.id;
-    opt.textContent = sl.icon + ' ' + sl.vi;
+    opt.value = sl.id; opt.textContent = `${sl.icon} ${sl.vi}`;
     sel.appendChild(opt);
   });
 });
 
-// ── Rarity Downgrade Modal ──────────────────────────────
-let rdPending = null; // { slot, item, rarity, score, current, entry }
-
-function rdShow(slot, item, rarity, score, current, ch, boss, isFinal, isMobDrop) {
-  const lv = ITEM_LEVELS[slot.id]?.[item.idx] || '?';
-  const lvOld = ITEM_LEVELS[slot.id]?.[current.itemIdx] || '?';
-  const diff = score - current.score;
-  document.getElementById('rdNew').className = `rd-item ${RARITY_BG[rarity]}`;
-  document.getElementById('rdNew').innerHTML = `
-    <div class="rd-item-label">MỚI DROP</div>
-    <div class="rd-item-name" style="color:${RARITY_COLOR[rarity]}">${item.name}</div>
-    <div class="rd-item-lv">Lv.${lv} · ${rarity}</div>
-    <div class="rd-item-score" style="color:${RARITY_COLOR[rarity]}">${fmt(score)}</div>`;
-  document.getElementById('rdOld').className = `rd-item ${RARITY_BG[current.rarity]}`;
-  document.getElementById('rdOld').innerHTML = `
-    <div class="rd-item-label">ĐANG EQUIP</div>
-    <div class="rd-item-name" style="color:${RARITY_COLOR[current.rarity]}">${current.name}</div>
-    <div class="rd-item-lv">Lv.${lvOld} · ${current.rarity}</div>
-    <div class="rd-item-score" style="color:${RARITY_COLOR[current.rarity]}">${fmt(current.score)}</div>`;
-  document.getElementById('rdNote').innerHTML =
-    `Score cao hơn <strong style="color:#34d399">+${fmt(diff)}</strong> nhưng rarity thấp hơn (<span style="color:${RARITY_COLOR[current.rarity]}">${current.rarity}</span> → <span style="color:${RARITY_COLOR[rarity]}">${rarity}</span>).<br>Bạn muốn trang bị hay bán?`;
-  rdPending = { slot, item, rarity, score, current, ch, boss, isFinal, isMobDrop };
-  document.getElementById('rdOverlay').style.display = 'flex';
-}
-
-function rdDecide(equip) {
-  document.getElementById('rdOverlay').style.display = 'none';
-  if (!rdPending) return;
-  const { slot, item, rarity, score, current, ch, boss, isFinal, isMobDrop } = rdPending;
-  rdPending = null;
-  const isUpgrade = equip;
-  if (equip) {
-    state.gear[slot.id] = { name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, chapter: ch };
-    state.stats.upgrades++;
-  }
-
-  state.stats.total++;
-  state.stats.byRarity[rarity]++;
-  const entry = { ch, boss, isFinal, isMobDrop, slot, name: item.name, itemId: item.id, itemIdx: item.idx, rarity, score, isUpgrade, isNew: false, prevScore: current.score, prevName: current.name, prevRarity: current.rarity, prevItemIdx: current.itemIdx };
-  state.log.unshift(entry);
-  if (state.log.length > 200) state.log.pop();
-  if (isMobDrop) state.mobDropDone = true;
-  render();
-}
-
-resetAll();
-// Khôi phục customProb từ localStorage nếu có
-try {
-  const saved = localStorage.getItem('natv_customProb');
-  if (saved) {
-    state.customProb = JSON.parse(saved);
-    DROP_RATES = state.customProb;
-  }
-} catch(e) {}
-buildProbEditor();
 render();
 </script>
 </body>
 </html>
-                                                                                                                                                                                                                                                                                                                                                                  
