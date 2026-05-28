@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NATV — Simulator Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --surface2: #243044;
+      --border: #334155;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --green: #4ade80;
+      --green-dim: #166534;
+      --amber: #fbbf24;
+      --red: #f87171;
+      --blue: #60a5fa;
+      --gold: #fcd34d;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    header {
+      padding: 1.1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, #162032 0%, var(--bg) 100%);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    header h1 { margin: 0 0 .2rem; font-size: 1.25rem; }
+    header p { margin: 0; color: var(--muted); font-size: .82rem; max-width: 70rem; }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 0;
+      min-height: calc(100vh - 84px);
+    }
+    @media (max-width: 1080px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { border-left: 0; border-top: 1px solid var(--border); }
+    }
+    main { padding: 1rem 1.25rem 2rem; overflow-x: hidden; }
+    .sidebar {
+      border-left: 1px solid var(--border);
+      background: #121a26;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+    .gold-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .65rem;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding: .85rem 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+    .gold-display {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--gold);
+      min-width: 180px;
+    }
+    .gold-display span.icon { font-size: 1.1rem; }
+    .gold-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .45rem;
+      align-items: center;
+      flex: 1;
+    }
+    input[type="number"], input[type="text"], select, textarea {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: .45rem .6rem;
+      font: inherit;
+    }
+    input[type="number"] { width: 140px; }
+    textarea { width: 100%; min-height: 72px; font-size: .78rem; font-family: ui-monospace, monospace; }
+    .btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: .45rem .75rem;
+      font: inherit;
+      cursor: pointer;
+    }
+    .btn:hover { border-color: var(--blue); }
+    .btn.primary { background: #1d4ed8; border-color: #2563eb; }
+    .btn.primary:hover { background: #2563eb; }
+    .btn.success { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+    .btn.warn { background: #78350f; border-color: var(--amber); color: var(--amber); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin-bottom: .85rem;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: .25rem .65rem;
+      font-size: .75rem;
+      color: var(--muted);
+    }
+    .stat-list { display: flex; flex-direction: column; gap: .65rem; }
+    .stat-row {
+      display: grid;
+      grid-template-columns: 52px minmax(0, 1fr) auto;
+      gap: .85rem;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: .85rem 1rem;
+      transition: border-color .15s, transform .15s;
+    }
+    .stat-row.maxed { opacity: .72; border-style: dashed; }
+    .stat-row.flash { border-color: var(--green); transform: scale(1.005); }
+    .stat-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-size: .72rem;
+      font-weight: 700;
+      color: #fff;
+      text-transform: uppercase;
+    }
+    .stat-main h3 { margin: 0 0 .15rem; font-size: .95rem; }
+    .stat-main .sub { color: var(--muted); font-size: .78rem; }
+    .stat-value {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-top: .25rem;
+    }
+    .stat-value .next { color: var(--green); font-size: .82rem; font-weight: 500; margin-left: .35rem; }
+    .stat-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: .35rem;
+      min-width: 120px;
+    }
+    .cost {
+      color: var(--gold);
+      font-weight: 600;
+      font-size: .88rem;
+    }
+    .cost.insufficient { color: var(--red); }
+    .max-badge {
+      background: #334155;
+      color: var(--muted);
+      border-radius: 999px;
+      padding: .35rem .75rem;
+      font-size: .78rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: .85rem;
+      margin-bottom: .85rem;
+    }
+    .panel h2 {
+      margin: 0 0 .65rem;
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+    }
+    .panel label {
+      display: block;
+      font-size: .78rem;
+      color: var(--muted);
+      margin-bottom: .25rem;
+    }
+    .field { margin-bottom: .65rem; }
+    .field-row {
+      display: flex;
+      gap: .45rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: .5rem;
+    }
+    .summary-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .55rem .65rem;
+    }
+    .summary-card .label { font-size: .68rem; color: var(--muted); text-transform: uppercase; }
+    .summary-card .value { font-size: .95rem; font-weight: 700; margin-top: .1rem; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .78rem;
+    }
+    th, td {
+      border-bottom: 1px solid var(--border);
+      padding: .4rem .35rem;
+      text-align: left;
+    }
+    th { color: var(--muted); font-size: .68rem; text-transform: uppercase; }
+    .foot {
+      margin-top: 1rem;
+      color: var(--muted);
+      font-size: .72rem;
+    }
+    .error-box {
+      background: #450a0a;
+      border: 1px solid var(--red);
+      color: #fecaca;
+      border-radius: 10px;
+      padding: .85rem 1rem;
+      margin: 1rem;
+    }
+    .app-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      background: #121a26;
+      padding: 0 1rem;
+      position: sticky;
+      top: 68px;
+      z-index: 19;
+    }
+    .app-tab {
+      background: transparent;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      padding: .75rem 1rem;
+      font: inherit;
+      cursor: pointer;
+      font-size: .84rem;
+    }
+    .app-tab:hover { color: var(--text); }
+    .app-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .drop-frame {
+      width: 100%;
+      height: calc(100vh - 118px);
+      border: 0;
+      display: block;
+      background: #0f0f1a;
+    }
+    .docs-wrap { max-width: 920px; margin: 0 auto; padding: 1.25rem 1.5rem 3rem; }
+    .docs-wrap h2 { margin: 1.5rem 0 .5rem; font-size: 1.05rem; color: var(--blue); }
+    .docs-wrap h3 { margin: 1rem 0 .35rem; font-size: .92rem; }
+    .docs-wrap p, .docs-wrap li { font-size: .86rem; color: #cbd5e1; }
+    .docs-wrap code { background: var(--surface2); padding: .1rem .35rem; border-radius: 4px; font-size: .8rem; }
+    .docs-wrap pre { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: .75rem; overflow-x: auto; font-size: .76rem; }
+    .docs-wrap table { margin: .65rem 0 1rem; }
+    .docs-table-scroll { overflow-x: auto; margin: .65rem 0 1rem; border: 1px solid var(--border); border-radius: 8px; }
+    .docs-table-scroll table { margin: 0; min-width: 860px; font-size: .74rem; }
+    .docs-table-scroll th, .docs-table-scroll td { white-space: nowrap; padding: .45rem .5rem; }
+    .docs-table-scroll tr.row-milestone { background: rgba(124, 58, 237, 0.12); }
+    .docs-table-scroll td.cell-max { color: var(--amber); font-weight: 600; }
+    .docs-table-scroll td.cell-dash { color: #64748b; text-align: center; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>NATV Simulator Hub</h1>
+    <p>Upgrade Stats + Drop Simulator — test progression và drop trang bị theo spec NATV.</p>
+  </header>
+
+  <nav class="app-tabs">
+    <button class="app-tab active" data-tab="upgrade">⬆ Upgrade Stats</button>
+    <button class="app-tab" data-tab="drop">🎲 Drop Simulator</button>
+    <button class="app-tab" data-tab="docs">📄 Tài liệu</button>
+  </nav>
+
+  <section id="tab-upgrade" class="tab-panel active">
+  <div id="bootError" class="error-box" hidden>
+    Không tải được dữ liệu upgrade. Chạy <code>py generate_upgrade_stat_simulator_data.py</code> rồi mở lại file này.
+  </div>
+
+  <div class="layout" id="app" hidden>
+    <main>
+      <div class="gold-bar">
+        <div class="gold-display"><span class="icon">🪙</span><span id="goldDisplay">0</span></div>
+        <div class="gold-controls">
+          <input type="number" id="goldInput" min="0" step="1" value="1000" />
+          <button class="btn" id="btnSetGold">Đặt gold</button>
+          <button class="btn" data-add-gold="1000">+1K</button>
+          <button class="btn" data-add-gold="100000">+100K</button>
+          <button class="btn" data-add-gold="1000000">+1M</button>
+          <button class="btn" data-add-gold="1000000000">+1B</button>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <span class="pill" id="totalSpentPill">Đã tiêu: 0</span>
+        <span class="pill" id="upgradeCountPill">Tổng upgrade: 0</span>
+        <button class="btn warn" id="btnReset">Reset tất cả</button>
+        <button class="btn" id="btnExport">Export state</button>
+        <button class="btn" id="btnImport">Import state</button>
+      </div>
+
+      <div class="stat-list" id="statList"></div>
+      <p class="foot" id="dataMeta"></p>
+    </main>
+
+    <aside class="sidebar">
+      <div class="panel">
+        <h2>Thống kê nhanh</h2>
+        <div class="summary-grid">
+          <div class="summary-card"><div class="label">Stat đã max</div><div class="value" id="maxedCount">0 / 7</div></div>
+          <div class="summary-card"><div class="label">Upgrade khả dụng</div><div class="value" id="affordableCount">0</div></div>
+          <div class="summary-card"><div class="label">Tổng gold cần max all</div><div class="value" id="totalToMax">—</div></div>
+          <div class="summary-card"><div class="label">Gold còn thiếu</div><div class="value" id="goldShortfall">—</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Jump / bulk upgrade</h2>
+        <div class="field">
+          <label for="inspectStat">Chọn stat</label>
+          <select id="inspectStat"></select>
+        </div>
+        <div class="field">
+          <label for="jumpLevel">Nhảy tới level</label>
+          <div class="field-row">
+            <input type="number" id="jumpLevel" min="1" step="1" value="1" />
+            <button class="btn" id="btnJump">Jump</button>
+          </div>
+        </div>
+        <div class="field-row">
+          <button class="btn success" id="btnUpgrade1">+1 level</button>
+          <button class="btn success" id="btnUpgrade10">+10 level</button>
+          <button class="btn success" id="btnUpgradeMax">Max affordable</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Curve preview</h2>
+        <div class="field-row" style="margin-bottom:.55rem;">
+          <label for="curveFrom" style="margin:0;">Từ L</label>
+          <input type="number" id="curveFrom" min="1" value="1" style="width:72px;" />
+          <label for="curveTo" style="margin:0;">đến L</label>
+          <input type="number" id="curveTo" min="1" value="20" style="width:72px;" />
+          <button class="btn" id="btnRefreshCurve">Xem</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Level</th>
+                <th>Value</th>
+                <th>Gold (→L)</th>
+                <th>Δ Value</th>
+              </tr>
+            </thead>
+            <tbody id="curveBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel" id="importPanel" hidden>
+        <h2>Import state JSON</h2>
+        <textarea id="importText" placeholder='{"gold":1000000,"levels":{"Damage":50,...}}'></textarea>
+        <div class="field-row" style="margin-top:.55rem;">
+          <button class="btn primary" id="btnApplyImport">Áp dụng</button>
+          <button class="btn" id="btnCancelImport">Huỷ</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+  </section>
+
+  <section id="tab-drop" class="tab-panel">
+    <iframe
+      class="drop-frame"
+      id="dropSimulatorFrame"
+      src="drop-simulator.html"
+      title="NATV Drop Simulator"
+      loading="lazy"
+    ></iframe>
+  </section>
+
+  <section id="tab-docs" class="tab-panel">
+    <div class="docs-wrap">
+      <h2>1. Tổng quan</h2>
+      <p>Simulator mô phỏng hệ thống drop trang bị trong game Night Valley. Mỗi run gồm các wave chiến đấu, mỗi wave có cơ chế drop khác nhau, nhằm kiểm tra cảm giác tiến trình nhân vật qua 24 chapter.</p>
+
+      <h2>2. Cấu trúc dữ liệu</h2>
+      <h3>2.1 Slot trang bị (8 slot)</h3>
+      <table>
+        <thead><tr><th>Slot</th><th>Icon</th><th>Tên VI</th><th>Stat 1</th><th>Stat 2</th></tr></thead>
+        <tbody>
+          <tr><td>weapon</td><td>🔫</td><td>Súng</td><td>DMG</td><td>ATK SPD</td></tr>
+          <tr><td>armor</td><td>🛡️</td><td>Áo Giáp</td><td>HP</td><td>HP REGEN</td></tr>
+          <tr><td>glove</td><td>🧤</td><td>Găng Tay</td><td>DMG</td><td>ATK SPD</td></tr>
+          <tr><td>feet</td><td>👟</td><td>Giày</td><td>HP</td><td>HP REGEN</td></tr>
+          <tr><td>hat</td><td>🎩</td><td>Mũ</td><td>HP</td><td>CRIT DMG</td></tr>
+          <tr><td>ring</td><td>💍</td><td>Nhẫn</td><td>DMG</td><td>CRIT RATE</td></tr>
+          <tr><td>necklace</td><td>📿</td><td>Dây Chuyền</td><td>DMG</td><td>ATK SPD</td></tr>
+          <tr><td>waist</td><td>🪢</td><td>Thắt Lưng</td><td>HP</td><td>HP REGEN</td></tr>
+        </tbody>
+      </table>
+
+      <h3>2.2 Rarity (5 bậc)</h3>
+      <p>Common/Uncommon chỉ có stat1. Rare/Epic/Legendary có stat2 từ item #25 (Chapter 13+).</p>
+
+      <h3>2.3 Phân bổ item theo chapter</h3>
+      <p>Mỗi slot có 66 items (#1–#66). Chapter của item i: <code>floor(i × 24 / 66) + 1</code>. Score và stat lấy từ CSV nguồn.</p>
+
+      <h2>3. Hệ thống Score</h2>
+      <p>Tăng 1.55× mỗi chapter, 1.05× giữa các item trong chapter. Mỗi item có Lv.X nhất quán qua tất cả rarity.</p>
+
+      <h2>4. Cấu trúc Wave & Drop Pattern</h2>
+      <p>Số level cần đạt để gặp boss tăng dần theo chapter:</p>
+      <table>
+        <thead><tr><th>Chapter</th><th>Level chapter</th><th>Mob drop</th><th>Boss drop</th></tr></thead>
+        <tbody>
+          <tr><td>Chapter 1</td><td>30 level</td><td>9</td><td>1 (cuối chapter)</td></tr>
+          <tr><td>Chapter 2</td><td>45 level</td><td>14</td><td>1 (cuối chapter)</td></tr>
+          <tr><td>Chapter 3</td><td>60 level</td><td>19</td><td>1 (cuối chapter)</td></tr>
+          <tr><td>Chapter 4</td><td>75 level</td><td>24</td><td>1 (cuối chapter)</td></tr>
+          <tr><td>Chapter 5 trở đi</td><td>90 level (cố định)</td><td>29</td><td>1 (cuối chapter)</td></tr>
+        </tbody>
+      </table>
+      <h3>4.1 Cơ chế Drop</h3>
+      <table>
+        <thead><tr><th>Loại Wave</th><th>Điều kiện</th><th>Số Drop</th><th>Giới hạn Rarity</th></tr></thead>
+        <tbody>
+          <tr><td>⚔️ MOB WAVE</td><td>Mỗi 3 level sau boss</td><td>1 drop</td><td>Theo tỉ lệ drop</td></tr>
+          <tr><td>👹 BOSS WAVE</td><td>Cuối mỗi chapter</td><td>1 drop</td><td>Theo tỉ lệ drop</td></tr>
+        </tbody>
+      </table>
+      <p>Sau mỗi Boss Wave: mob drop reset cho chu kỳ tiếp theo. Không có hard cap rarity riêng — bảng xác suất là nguồn kiểm soát duy nhất.</p>
+
+      <h2>5. Xác suất Drop theo Chapter</h2>
+      <p>Xác suất <code>DROP_RATES</code> là nguồn kiểm soát rarity duy nhất. Rarity 0% trong bảng đồng nghĩa không bao giờ drop. Bảng được căn theo <b>Power-scaling-test.md</b>: Legendary tăng mạnh từ Ch10–12 (capped stats MAX), endgame Ch22–24 ưu tiên BiS.</p>
+      <table>
+        <thead><tr><th>Nhóm</th><th>Chapter</th><th>Common</th><th>Uncommon</th><th>Rare</th><th>Epic</th><th>Legendary</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td>Ch 1–3</td><td>85%</td><td>12%</td><td>3%</td><td>0%</td><td>0%</td></tr>
+          <tr><td>1</td><td>Ch 4–6</td><td>60%</td><td>28%</td><td>10%</td><td>2%</td><td>0%</td></tr>
+          <tr><td>2</td><td>Ch 7–9</td><td>40%</td><td>35%</td><td>18%</td><td>6%</td><td>1%</td></tr>
+          <tr><td>3</td><td>Ch 10–12</td><td>22%</td><td>35%</td><td>22%</td><td>14%</td><td>7%</td></tr>
+          <tr><td>4</td><td>Ch 13–15</td><td>8%</td><td>28%</td><td>28%</td><td>22%</td><td>14%</td></tr>
+          <tr><td>5</td><td>Ch 16–18</td><td>2%</td><td>18%</td><td>30%</td><td>28%</td><td>22%</td></tr>
+          <tr><td>6</td><td>Ch 19–21</td><td>0%</td><td>10%</td><td>25%</td><td>32%</td><td>33%</td></tr>
+          <tr><td>7</td><td>Ch 22–24</td><td>0%</td><td>5%</td><td>15%</td><td>30%</td><td>50%</td></tr>
+        </tbody>
+      </table>
+      <p>Boss cuối mỗi chapter dùng nhóm xác suất kế tiếp (+1). Ch24 final boss: ~65% Legendary trên item tier cao nhất mỗi slot. Pool drop: mở khóa cumulative (<code>chapter ≤ hiện tại</code>), boss ưu tiên item tier chapter hiện tại.</p>
+
+      <h2>6. Logic Upgrade item drop</h2>
+      <ol>
+        <li>Slot đang trống → equip</li>
+        <li><code>score &gt; current.score</code> → equip</li>
+        <li>Cùng item (itemIdx) + rarity cao hơn → auto equip</li>
+        <li>Không thoả → bán</li>
+      </ol>
+
+      <h2>7. Popup rarity downgrade</h2>
+      <p>Boss drop rarity thấp hơn equip nhưng score cao hơn → popup ✓ Trang bị / ✕ Bán. Không áp dụng boss cuối chapter (★) và auto run.</p>
+
+      <h2>8. Upgrade Stats Simulator</h2>
+      <p>Tab <b>Upgrade Stats</b> mô phỏng nâng 7 stat bằng gold (DMG, HP, HP Regen, ATK SPD, Crit Rate, Crit DMG, ATK Range) từ CSV Unity config.</p>
+
+      <h2>9. Power Scaling Test (Chapter 1–24)</h2>
+      <p>Bảng mô phỏng tiến trình cày cuốc nâng cấp (RAW) và các chỉ số Sát thương (DMG), Máu (HP), Hồi máu (HP Regen) cùng với các chỉ số giới hạn (Capped Stats). Các chỉ số giới hạn được giãn cách giá tiền nâng cấp để đạt mức MAX tại Chapter 12 (RAW Level 1600) theo đúng mục tiêu của Team Design.</p>
+      <p><em>Ký hiệu <code>—</code> biểu thị việc chỉ số này đã MAX và chuyển sang nhánh Masteries — người chơi không cần/không thể nâng cấp chúng trong bảng Stat cơ bản nữa.</em></p>
+      <div class="docs-table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Chapter</th>
+              <th>Cấp độ cày cuốc (RAW)</th>
+              <th>DMG</th>
+              <th>HP</th>
+              <th>HP Regen</th>
+              <th>ATK Speed (Max 140)</th>
+              <th>Crit Rate (Max 199)</th>
+              <th>Crit DMG (Max 200)</th>
+              <th>ATK Range (Max 201)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>1 (Cuối)</strong></td><td>Lv 80</td><td>220</td><td>443</td><td>408</td><td>Lv 7</td><td>Lv 10</td><td>Lv 10</td><td>Lv 11</td></tr>
+            <tr><td><strong>2 (Cuối)</strong></td><td>Lv 150</td><td>500</td><td>1,069</td><td>903</td><td>Lv 14</td><td>Lv 19</td><td>Lv 19</td><td>Lv 19</td></tr>
+            <tr><td><strong>3 (Cuối)</strong></td><td>Lv 240</td><td>1,081</td><td>2,489</td><td>1,862</td><td>Lv 21</td><td>Lv 30</td><td>Lv 30</td><td>Lv 31</td></tr>
+            <tr><td><strong>4 (Cuối)</strong></td><td>Lv 330</td><td>2,080</td><td>5,153</td><td>3,362</td><td>Lv 29</td><td>Lv 41</td><td>Lv 42</td><td>Lv 42</td></tr>
+            <tr><td><strong>5 (Cuối)</strong></td><td>Lv 500</td><td>6,316</td><td>18,134</td><td>8,895</td><td>Lv 44</td><td>Lv 62</td><td>Lv 63</td><td>Lv 63</td></tr>
+            <tr><td><strong>6 (Cuối)</strong></td><td>Lv 700</td><td>21,634</td><td>74,871</td><td>25,470</td><td>Lv 61</td><td>Lv 87</td><td>Lv 88</td><td>Lv 88</td></tr>
+            <tr><td><strong>7 (Cuối)</strong></td><td>Lv 850</td><td>53,527</td><td>214,222</td><td>54,708</td><td>Lv 74</td><td>Lv 106</td><td>Lv 106</td><td>Lv 107</td></tr>
+            <tr><td><strong>8 (Cuối)</strong></td><td>Lv 1000</td><td>131,766</td><td>610,987</td><td>116,472</td><td>Lv 87</td><td>Lv 124</td><td>Lv 125</td><td>Lv 126</td></tr>
+            <tr><td><strong>9 (Cuối)</strong></td><td>Lv 1150</td><td>323,684</td><td>1,740,651</td><td>246,988</td><td>Lv 100</td><td>Lv 143</td><td>Lv 144</td><td>Lv 144</td></tr>
+            <tr><td><strong>10 (Cuối)</strong></td><td>Lv 1300</td><td>794,465</td><td>4,957,066</td><td>522,778</td><td>Lv 113</td><td>Lv 161</td><td>Lv 162</td><td>Lv 163</td></tr>
+            <tr><td><strong>11 (Cuối)</strong></td><td>Lv 1450</td><td>1,949,301</td><td>14,114,872</td><td>1,105,532</td><td>Lv 126</td><td>Lv 180</td><td>Lv 181</td><td>Lv 182</td></tr>
+            <tr class="row-milestone"><td><strong>12 (Cuối)</strong></td><td><strong>Lv 1600</strong></td><td><strong>4,782,101</strong></td><td><strong>40,189,142</strong></td><td><strong>2,336,912</strong></td><td class="cell-max">MAX (Lv 140)</td><td class="cell-max">MAX (Lv 199)</td><td class="cell-max">MAX (Lv 200)</td><td class="cell-max">MAX (Lv 201)</td></tr>
+            <tr><td><strong>13 (Cuối)</strong></td><td>Lv 1750</td><td>11,730,939</td><td>114,428,247</td><td>4,938,885</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td></tr>
+            <tr><td><strong>14 (Cuối)</strong></td><td>Lv 1900</td><td>28,776,444</td><td>325,803,120</td><td>10,436,978</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td></tr>
+            <tr><td><strong>15 (Cuối)</strong></td><td>Lv 2050</td><td>70,589,023</td><td>927,633,264</td><td>22,054,700</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td></tr>
+            <tr><td><strong>16 (Cuối)</strong></td><td>Lv 2200</td><td>173,155,179</td><td>2,641,174,366</td><td>46,603,500</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td></tr>
+            <tr><td><strong>17 (Cuối)</strong></td><td>Lv 2350</td><td>424,749,712</td><td>7,519,997,895</td><td>98,476,285</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td></tr>
+            <tr><td><strong>18 (Cuối)</strong></td><td>Lv 2500</td><td>1,041,910,470</td><td>21,411,067,647</td><td>208,085,943</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td></tr>
+            <tr><td><strong>19 (Cuối)</strong></td><td>Lv 2650</td><td>2,555,804,297</td><td>60,961,958,960</td><td>439,696,358</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td></tr>
+            <tr><td><strong>20 (Cuối)</strong></td><td>Lv 2800</td><td>6,269,382,071</td><td>173,571,932,969</td><td>929,100,168</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td></tr>
+            <tr><td><strong>21 (Cuối)</strong></td><td>Lv 2950</td><td>15,378,779,128</td><td>494,196,976,398</td><td>1,963,233,674</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td></tr>
+            <tr><td><strong>22 (Cuối)</strong></td><td>Lv 3100</td><td>37,724,107,450</td><td>1,407,086,082,170</td><td>4,148,406,918</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td></tr>
+            <tr><td><strong>23 (Cuối)</strong></td><td>Lv 3250</td><td>92,537,142,264</td><td>4,006,279,552,876</td><td>8,765,781,814</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td></tr>
+            <tr><td><strong>24 (Cuối)</strong></td><td>Lv 3400</td><td>226,993,380,357</td><td>11,406,747,644,203</td><td>18,522,514,383</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td><td class="cell-dash">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Drop simulator căn rarity theo bảng này: Ch12 ≈ capped stats MAX → Epic/Legendary ramp; Ch24 end ≈ full Legendary BiS (#66) trên 8 slot.</p>
+
+      <p class="foot">Nguồn: NATV_DropSimulator.docx · Power-scaling-test.md · Cập nhật 2026-05-28</p>
+    </div>
+  </section>
+
+  <script src="upgrade-stat-simulator-data.js"></script>
+  <script>
+    const ICON_COLORS = {
+      Damage: "#ef4444",
+      Hp: "#22c55e",
+      HpRegen: "#14b8a6",
+      AttackSpeed: "#f59e0b",
+      Critical: "#a855f7",
+      CriticalDamage: "#ec4899",
+      AttackRange: "#3b82f6",
+    };
+
+    const STORAGE_KEY = "natv-upgrade-stat-sim-v1";
+
+    let DATA = null;
+    let state = {
+      gold: 1000,
+      levels: {},
+      totalSpent: 0,
+      upgradeCount: 0,
+    };
+
+    function boot() {
+      if (!window.UPGRADE_STAT_SIM_DATA || !window.UPGRADE_STAT_SIM_DATA.stats) {
+        document.getElementById("bootError").hidden = false;
+        return;
+      }
+      DATA = window.UPGRADE_STAT_SIM_DATA;
+      document.getElementById("app").hidden = false;
+      loadState();
+      bindEvents();
+      renderAll();
+    }
+
+    function defaultLevels() {
+      const levels = {};
+      for (const stat of DATA.stats) levels[stat.id] = 1;
+      return levels;
+    }
+
+    function loadState() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          state.gold = Number(parsed.gold) || 0;
+          state.levels = { ...defaultLevels(), ...(parsed.levels || {}) };
+          state.totalSpent = Number(parsed.totalSpent) || 0;
+          state.upgradeCount = Number(parsed.upgradeCount) || 0;
+        } catch (_) {
+          state.levels = defaultLevels();
+        }
+      } else {
+        state.levels = defaultLevels();
+      }
+      document.getElementById("goldInput").value = Math.floor(state.gold);
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function notifyDropSimulator() {
+      const frame = document.getElementById("dropSimulatorFrame");
+      frame?.contentWindow?.postMessage({ type: "upgrade-stats-changed" }, "*");
+    }
+
+    function getStatConfig(id) {
+      return DATA.stats.find(s => s.id === id);
+    }
+
+    function getMaxLevel(stat) {
+      return stat.maxLevel || stat.baseValues.length;
+    }
+
+    function isMaxLevel(statId, level) {
+      const stat = getStatConfig(statId);
+      return level >= getMaxLevel(stat);
+    }
+
+    function getStatValue(stat, level) {
+      const idx = Math.max(0, Math.min(level - 1, stat.baseValues.length - 1));
+      return stat.baseValues[idx];
+    }
+
+    function getUpgradeCost(stat, nextLevel) {
+      if (nextLevel <= 1) return 0;
+      const idx = Math.max(0, Math.min(nextLevel - 1, stat.goldCosts.length - 1));
+      return stat.goldCosts[idx];
+    }
+
+    function getNextValue(stat, level) {
+      if (isMaxLevel(stat.id, level)) return null;
+      return getStatValue(stat, level + 1);
+    }
+
+    function formatGold(value) {
+      const n = Number(value) || 0;
+      if (Math.abs(n) < 99999) return Math.floor(n).toLocaleString("en-US");
+      const abs = Math.abs(n);
+      let divisor = 1000;
+      let suffix = "K";
+      if (abs >= 1e12) { divisor = 1e12; suffix = "T"; }
+      else if (abs >= 1e9) { divisor = 1e9; suffix = "B"; }
+      else if (abs >= 1e6) { divisor = 1e6; suffix = "M"; }
+      const scaled = abs / divisor;
+      return (n < 0 ? "-" : "") + scaled.toFixed(2) + suffix;
+    }
+
+    function floorToDigits(value, digits) {
+      if (digits <= 0) return Math.floor(value);
+      const power = Math.pow(10, digits);
+      return Math.floor(value * power) / power;
+    }
+
+    function formatStatValue(stat, rawValue) {
+      const fmt = stat.format;
+      let value = rawValue;
+      if (fmt.expressionType === "percent") value *= 100;
+      else if (fmt.expressionType === "int") value = Math.floor(value);
+
+      const digits = fmt.decimalDisplayDigit ?? 0;
+      const abs = Math.abs(value);
+      const maxDigits = fmt.maxIntDisplayDigit ?? 3;
+      const threshold = Math.pow(10, maxDigits);
+
+      let text;
+      if (abs >= threshold) {
+        let divisor = 1000;
+        let suffix = "K";
+        if (abs >= 1e12) { divisor = 1e12; suffix = "T"; }
+        else if (abs >= 1e9) { divisor = 1e9; suffix = "B"; }
+        else if (abs >= 1e6) { divisor = 1e6; suffix = "M"; }
+        const scaled = value / divisor;
+        const left = Math.max(0, maxDigits - Math.floor(Math.abs(scaled)).toString().length);
+        text = floorToDigits(scaled, left).toString() + suffix;
+      } else if (fmt.expressionType === "int") {
+        text = Math.floor(value).toLocaleString("en-US");
+      } else {
+        text = value.toFixed(digits);
+      }
+
+      text += fmt.suffix || "";
+      if (fmt.regenSuffix) text += "/s";
+      return text;
+    }
+
+    function sortedStats() {
+      return [...DATA.stats].sort((a, b) => {
+        const aMax = isMaxLevel(a.id, state.levels[a.id]);
+        const bMax = isMaxLevel(b.id, state.levels[b.id]);
+        if (aMax !== bMax) return aMax ? 1 : -1;
+        return b.sortingOrder - a.sortingOrder;
+      });
+    }
+
+    function tryUpgrade(statId, count = 1) {
+      const stat = getStatConfig(statId);
+      if (!stat) return 0;
+
+      let upgraded = 0;
+      for (let i = 0; i < count; i++) {
+        const level = state.levels[statId] || 1;
+        const nextLevel = level + 1;
+        if (isMaxLevel(statId, level)) break;
+
+        const cost = getUpgradeCost(stat, nextLevel);
+        if (state.gold < cost) break;
+
+        state.gold -= cost;
+        state.totalSpent += cost;
+        state.upgradeCount += 1;
+        state.levels[statId] = nextLevel;
+        upgraded += 1;
+      }
+      return upgraded;
+    }
+
+    function jumpToLevel(statId, targetLevel) {
+      const stat = getStatConfig(statId);
+      if (!stat) return;
+
+      const maxLevel = getMaxLevel(stat);
+      const target = Math.max(1, Math.min(maxLevel, Math.floor(targetLevel)));
+      const current = state.levels[statId] || 1;
+
+      if (target <= current) {
+        state.levels[statId] = target;
+        return;
+      }
+
+      let totalCost = 0;
+      for (let level = current + 1; level <= target; level++) {
+        totalCost += getUpgradeCost(stat, level);
+      }
+
+      if (state.gold < totalCost) {
+        alert(`Không đủ gold. Cần ${formatGold(totalCost)}, đang có ${formatGold(state.gold)}.`);
+        return;
+      }
+
+      state.gold -= totalCost;
+      state.totalSpent += totalCost;
+      state.upgradeCount += (target - current);
+      state.levels[statId] = target;
+    }
+
+    function upgradeMaxAffordable(statId) {
+      const stat = getStatConfig(statId);
+      if (!stat) return 0;
+
+      let upgraded = 0;
+      while (true) {
+        const level = state.levels[statId] || 1;
+        if (isMaxLevel(statId, level)) break;
+        const cost = getUpgradeCost(stat, level + 1);
+        if (state.gold < cost) break;
+        state.gold -= cost;
+        state.totalSpent += cost;
+        state.upgradeCount += 1;
+        state.levels[statId] = level + 1;
+        upgraded += 1;
+      }
+      return upgraded;
+    }
+
+    function calcRemainingGoldToMaxAll() {
+      let total = 0;
+      for (const stat of DATA.stats) {
+        const current = state.levels[stat.id] || 1;
+        for (let level = current + 1; level <= getMaxLevel(stat); level++) {
+          total += getUpgradeCost(stat, level);
+        }
+      }
+      return total;
+    }
+
+    function renderStatList() {
+      const list = document.getElementById("statList");
+      list.innerHTML = "";
+
+      for (const stat of sortedStats()) {
+        const level = state.levels[stat.id] || 1;
+        const maxLevel = getMaxLevel(stat);
+        const maxed = isMaxLevel(stat.id, level);
+        const value = getStatValue(stat, level);
+        const nextValue = getNextValue(stat, level);
+        const nextLevel = level + 1;
+        const cost = maxed ? 0 : getUpgradeCost(stat, nextLevel);
+        const canAfford = !maxed && state.gold >= cost;
+
+        const row = document.createElement("div");
+        row.className = "stat-row" + (maxed ? " maxed" : "");
+        row.dataset.statId = stat.id;
+
+        const icon = document.createElement("div");
+        icon.className = "stat-icon";
+        icon.style.background = ICON_COLORS[stat.id] || "#64748b";
+        icon.textContent = stat.nameEn.split(" ").map(w => w[0]).join("").slice(0, 3);
+
+        const main = document.createElement("div");
+        main.className = "stat-main";
+        const levelHint = stat.capType === "capped" && !maxed
+          ? `<span class="sub"> · tối đa ${maxLevel}</span>`
+          : "";
+        main.innerHTML = `
+          <h3>${stat.name} <span class="sub">(${stat.nameEn})</span></h3>
+          <div class="sub">Level ${level}${levelHint}</div>
+          <div class="stat-value">
+            ${formatStatValue(stat, value)}
+            ${nextValue != null ? `<span class="next">→ ${formatStatValue(stat, nextValue)}</span>` : ""}
+          </div>
+        `;
+
+        const actions = document.createElement("div");
+        actions.className = "stat-actions";
+        if (maxed) {
+          actions.innerHTML = `<span class="max-badge">MAX</span>`;
+        } else {
+          actions.innerHTML = `
+            <div class="cost ${canAfford ? "" : "insufficient"}">${formatGold(cost)}</div>
+            <button class="btn primary" data-upgrade="${stat.id}" ${canAfford ? "" : "disabled"}>Upgrade</button>
+          `;
+        }
+
+        row.append(icon, main, actions);
+        list.appendChild(row);
+      }
+    }
+
+    function renderSummary() {
+      document.getElementById("goldDisplay").textContent = formatGold(state.gold);
+      document.getElementById("totalSpentPill").textContent = `Đã tiêu: ${formatGold(state.totalSpent)}`;
+      document.getElementById("upgradeCountPill").textContent = `Tổng upgrade: ${state.upgradeCount}`;
+
+      const maxed = DATA.stats.filter(s => isMaxLevel(s.id, state.levels[s.id] || 1)).length;
+      const affordable = DATA.stats.filter(s => {
+        const level = state.levels[s.id] || 1;
+        if (isMaxLevel(s.id, level)) return false;
+        return state.gold >= getUpgradeCost(s, level + 1);
+      }).length;
+
+      const remaining = calcRemainingGoldToMaxAll();
+      document.getElementById("maxedCount").textContent = `${maxed} / ${DATA.stats.length}`;
+      document.getElementById("affordableCount").textContent = String(affordable);
+      document.getElementById("totalToMax").textContent = formatGold(remaining + state.totalSpent);
+      document.getElementById("goldShortfall").textContent = formatGold(Math.max(0, remaining - state.gold));
+
+      document.getElementById("dataMeta").textContent =
+        `Data generated: ${DATA.generatedAt || "?"} · Source: ${DATA.sourceDir || "?"}`;
+    }
+
+    function renderInspectOptions() {
+      const select = document.getElementById("inspectStat");
+      if (select.options.length) return;
+      for (const stat of DATA.stats) {
+        const opt = document.createElement("option");
+        opt.value = stat.id;
+        opt.textContent = `${stat.name} (${stat.nameEn})`;
+        select.appendChild(opt);
+      }
+    }
+
+    function renderCurve() {
+      const statId = document.getElementById("inspectStat").value;
+      const stat = getStatConfig(statId);
+      const from = Math.max(1, parseInt(document.getElementById("curveFrom").value, 10) || 1);
+      const to = Math.max(from, parseInt(document.getElementById("curveTo").value, 10) || from);
+      const body = document.getElementById("curveBody");
+      body.innerHTML = "";
+
+      for (let level = from; level <= Math.min(to, getMaxLevel(stat)); level++) {
+        const value = getStatValue(stat, level);
+        const prev = level > 1 ? getStatValue(stat, level - 1) : value;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${level}${state.levels[stat.id] === level ? " ★" : ""}</td>
+          <td>${formatStatValue(stat, value)}</td>
+          <td>${formatGold(getUpgradeCost(stat, level))}</td>
+          <td>${formatStatValue(stat, value - prev)}</td>
+        `;
+        body.appendChild(tr);
+      }
+    }
+
+    function flashStatRow(statId) {
+      const row = document.querySelector(`.stat-row[data-stat-id="${statId}"]`);
+      if (!row) return;
+      row.classList.add("flash");
+      setTimeout(() => row.classList.remove("flash"), 350);
+    }
+
+    function renderAll() {
+      renderStatList();
+      renderSummary();
+      renderInspectOptions();
+      renderCurve();
+      saveState();
+      notifyDropSimulator();
+    }
+
+    function bindEvents() {
+      document.getElementById("btnSetGold").addEventListener("click", () => {
+        state.gold = Math.max(0, Number(document.getElementById("goldInput").value) || 0);
+        renderAll();
+      });
+
+      document.querySelectorAll("[data-add-gold]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.gold += Number(btn.dataset.addGold) || 0;
+          document.getElementById("goldInput").value = Math.floor(state.gold);
+          renderAll();
+        });
+      });
+
+      document.getElementById("statList").addEventListener("click", e => {
+        const btn = e.target.closest("[data-upgrade]");
+        if (!btn || btn.disabled) return;
+        const statId = btn.dataset.upgrade;
+        const count = tryUpgrade(statId, 1);
+        if (count > 0) {
+          flashStatRow(statId);
+          renderAll();
+        }
+      });
+
+      document.getElementById("btnReset").addEventListener("click", () => {
+        if (!confirm("Reset gold, level tất cả stat và thống kê?")) return;
+        state.gold = 1000;
+        state.levels = defaultLevels();
+        state.totalSpent = 0;
+        state.upgradeCount = 0;
+        document.getElementById("goldInput").value = 1000;
+        renderAll();
+      });
+
+      document.getElementById("btnExport").addEventListener("click", () => {
+        const payload = {
+          gold: state.gold,
+          levels: state.levels,
+          totalSpent: state.totalSpent,
+          upgradeCount: state.upgradeCount,
+        };
+        const text = JSON.stringify(payload, null, 2);
+        navigator.clipboard.writeText(text).then(() => {
+          alert("Đã copy state JSON vào clipboard.");
+        }).catch(() => {
+          prompt("Copy state JSON:", text);
+        });
+      });
+
+      document.getElementById("btnImport").addEventListener("click", () => {
+        document.getElementById("importPanel").hidden = false;
+      });
+      document.getElementById("btnCancelImport").addEventListener("click", () => {
+        document.getElementById("importPanel").hidden = true;
+      });
+      document.getElementById("btnApplyImport").addEventListener("click", () => {
+        try {
+          const parsed = JSON.parse(document.getElementById("importText").value);
+          state.gold = Number(parsed.gold) || 0;
+          state.levels = { ...defaultLevels(), ...(parsed.levels || {}) };
+          state.totalSpent = Number(parsed.totalSpent) || 0;
+          state.upgradeCount = Number(parsed.upgradeCount) || 0;
+          document.getElementById("goldInput").value = Math.floor(state.gold);
+          document.getElementById("importPanel").hidden = true;
+          renderAll();
+        } catch (err) {
+          alert("JSON không hợp lệ: " + err.message);
+        }
+      });
+
+      document.getElementById("inspectStat").addEventListener("change", renderCurve);
+      document.getElementById("btnRefreshCurve").addEventListener("click", renderCurve);
+
+      document.getElementById("btnJump").addEventListener("click", () => {
+        const statId = document.getElementById("inspectStat").value;
+        jumpToLevel(statId, Number(document.getElementById("jumpLevel").value));
+        renderAll();
+      });
+
+      document.getElementById("btnUpgrade1").addEventListener("click", () => {
+        const statId = document.getElementById("inspectStat").value;
+        if (tryUpgrade(statId, 1) > 0) flashStatRow(statId);
+        renderAll();
+      });
+
+      document.getElementById("btnUpgrade10").addEventListener("click", () => {
+        const statId = document.getElementById("inspectStat").value;
+        if (tryUpgrade(statId, 10) > 0) flashStatRow(statId);
+        renderAll();
+      });
+
+      document.getElementById("btnUpgradeMax").addEventListener("click", () => {
+        const statId = document.getElementById("inspectStat").value;
+        if (upgradeMaxAffordable(statId) > 0) flashStatRow(statId);
+        renderAll();
+      });
+    }
+
+    boot();
+
+    document.querySelectorAll(".app-tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".app-tab").forEach(t => t.classList.remove("active"));
+        document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+        tab.classList.add("active");
+        document.getElementById("tab-" + tab.dataset.tab).classList.add("active");
+      });
+    });
+
+  </script>
+</body>
+</html>
